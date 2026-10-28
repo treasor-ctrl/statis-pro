@@ -1,0 +1,4916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Statis Pro 2026 - Phone-to-Phone Online</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+  * { -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b1120; color: #f8fafc; }
+  .modal-bg { background-color: rgba(11, 17, 32, 0.92); backdrop-filter: blur(6px); }
+  .active-pulse { animation: pulse 1.8s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+</style>
+</head>
+<body class="p-2 sm:p-4 max-w-md mx-auto min-h-screen flex flex-col justify-between select-none">
+
+  <!-- TOP BAR: CONNECTION & SCOREBOARD -->
+  <header class="bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-2 shadow-2xl">
+    <div class="flex justify-between items-center text-xs text-slate-400 font-mono mb-2">
+      <div class="flex items-center gap-1.5">
+        <span id="quarterDisplay" class="bg-slate-800 px-2 py-0.5 rounded font-black text-amber-300">Q1</span>
+        <span id="clockDisplay" class="text-amber-400 font-black text-sm">12:00</span>
+      </div>
+      <!-- Connection Pill -->
+      <div class="flex items-center gap-2">
+        <button onclick="openLobbyModal()" id="p2pStatusBtn" class="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-0.5 rounded-full font-bold text-slate-300">
+          <span id="connDot" class="w-2 h-2 rounded-full bg-rose-500"></span>
+          <span id="connLabel">Offline (Tap to Connect)</span>
+        </button>
+      </div>
+    </div>
+    
+    <!-- SPLIT SCOREBOARD (P1 vs P2) -->
+    <div class="grid grid-cols-2 gap-2 text-center items-center">
+      <!-- AWAY TEAM / PLAYER 1 -->
+      <div id="p1Box" class="bg-slate-800/90 p-2 rounded-lg border-2 border-amber-500 transition-all shadow-md">
+        <div class="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-amber-400 mb-0.5">
+          <span id="p1CoachTitle">P1 (AWAY)</span>
+          <span id="p1RoleBadge" class="bg-amber-500 text-slate-950 px-1 rounded text-[8px] font-black">OFFENSE</span>
+        </div>
+        <div id="awayTeamName" class="text-xs font-black text-white truncate">HOLLYWOOD FLAKERS</div>
+        <div id="awayScore" class="text-2xl font-black font-mono text-white my-0.5">0</div>
+        <div class="flex justify-between text-[9px] text-slate-400 px-1 font-mono">
+          <span id="awayFouls">Fouls: 0</span>
+          <button onclick="openSubModal('away')" id="awaySubBtn" class="text-amber-400 hover:underline font-bold">Subs ➔</button>
+        </div>
+      </div>
+
+      <!-- HOME TEAM / PLAYER 2 -->
+      <div id="p2Box" class="bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80">
+        <div class="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-sky-400 mb-0.5">
+          <span id="p2CoachTitle">P2 (HOME)</span>
+          <span id="p2RoleBadge" class="bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black">DEFENSE</span>
+        </div>
+        <div id="homeTeamName" class="text-xs font-black text-white truncate">SPAZZ HANDS</div>
+        <div id="homeScore" class="text-2xl font-black font-mono text-white my-0.5">0</div>
+        <div class="flex justify-between text-[9px] text-slate-400 px-1 font-mono">
+          <span id="homeFouls">Fouls: 0</span>
+          <button onclick="openSubModal('home')" id="homeSubBtn" class="text-sky-400 hover:underline font-bold">Subs ➔</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ON-COURT FLOOR & COACH CONTROLLER -->
+  <main class="flex-grow flex flex-col gap-2">
+    <!-- Live Turn Guidance Banner -->
+    <div id="turnBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 text-xs flex justify-between items-center shadow-sm">
+      <div class="flex items-center gap-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 active-pulse"></span>
+        <span id="turnBannerText" class="font-bold text-amber-300">P1's Possession: Call Offensive Play</span>
+      </div>
+      <span id="myRoleTag" class="text-[9px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">Host Screen</span>
+    </div>
+
+    <!-- Active 5 Cards on Floor -->
+    <div id="lineupContainer" class="grid grid-cols-1 gap-1.5 overflow-y-auto max-h-[35vh]">
+      <!-- Populated dynamically -->
+    </div>
+
+    <!-- PLAY-BY-PLAY FEED -->
+    <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] font-mono h-24 overflow-y-auto flex flex-col-reverse text-slate-300 shadow-inner" id="playLog">
+      <div class="text-slate-500 italic">Connected to 2026 Engine. Tap an action below to start!</div>
+    </div>
+  </main>
+
+  <!-- INTERACTIVE PLAYCALLING CONSOLE -->
+  <footer class="mt-2 bg-slate-900 border-t-2 border-slate-800 p-2.5 rounded-t-xl shadow-2xl">
+    <div id="actionArea">
+      <!-- Dynamic: Offense selects play, or Defense selects scheme -->
+      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
+        <span id="actionConsoleTitle">Offensive Playcall</span>
+        <span class="text-slate-500">Statis Pro D88 Modern Rules</span>
+      </div>
+      <div id="actionBtnGrid" class="grid grid-cols-3 gap-2">
+        <button onclick="executeOffensePlay('pick_pop')" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
+          Pick & Pop 3
+        </button>
+        <button onclick="executeOffensePlay('corner_3')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
+          Corner Kick 3
+        </button>
+        <button onclick="executeOffensePlay('drive')" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
+          Drive / Paint
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ================= LOBBY & ONLINE ROOM MODAL ================= -->
+  <div id="lobbyModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border-2 border-slate-700 rounded-2xl max-w-sm w-full p-5 flex flex-col gap-4 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-black text-white">PLAY PHONE-TO-PHONE</h3>
+        <button onclick="closeLobbyModal()" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+      </div>
+
+      <!-- Mode 1: Host a Game -->
+      <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+        <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">OPTION 1: HOST GAME (Phone 1)</div>
+        <p class="text-[11px] text-slate-400 mb-2">Tap below to get a 4-digit Room Code for your son:</p>
+        <button onclick="startHosting()" id="btnHost" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow">
+          Generate Room Code
+        </button>
+        <div id="hostCodeBox" class="mt-2 text-center p-2 bg-slate-950 rounded border border-amber-500/50 hidden">
+          <div class="text-[9px] text-slate-400 uppercase font-mono">Your Son Enters This Code:</div>
+          <div id="myRoomCode" class="text-2xl font-black font-mono tracking-widest text-amber-300">----</div>
+          <div class="text-[10px] text-slate-500 animate-pulse mt-1">Waiting for Phone 2 to connect...</div>
+        </div>
+      </div>
+
+      <!-- Mode 2: Join a Game -->
+      <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
+        <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-1">OPTION 2: JOIN GAME (Phone 2)</div>
+        <p class="text-[11px] text-slate-400 mb-2">Enter the 4-digit code shown on Phone 1:</p>
+        <div class="flex gap-2">
+          <input id="inputJoinCode" type="text" placeholder="e.g. 7412" maxlength="6" class="flex-grow bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-center font-mono font-bold text-white text-base uppercase focus:border-sky-500 outline-none">
+          <button onclick="joinRoom()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs uppercase tracking-wider shadow">
+            Connect
+          </button>
+        </div>
+      </div>
+
+      <!-- Pass & Play Fallback -->
+      <div class="text-center pt-1 border-t border-slate-800">
+        <button onclick="closeLobbyModal()" class="text-xs text-slate-400 hover:text-white underline">
+          Or play offline on this phone (Pass & Play)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SUBSTITUTION MODAL ================= -->
+  <div id="subModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border-2 border-slate-700 rounded-xl max-w-sm w-full max-h-[85vh] flex flex-col shadow-2xl">
+      <div class="p-3 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <h3 id="subModalTitle" class="text-sm font-black text-white">SUBSTITUTIONS</h3>
+          <p class="text-[10px] text-slate-400">Select active player to bench, then tap replacement.</p>
+        </div>
+        <button onclick="closeSubModal()" class="text-slate-400 hover:text-white text-lg font-bold px-2">&times;</button>
+      </div>
+      <div class="p-3 overflow-y-auto flex-grow flex flex-col gap-3">
+        <div>
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">On Court:</div>
+          <div id="subCourtList" class="flex flex-col gap-1"></div>
+        </div>
+        <div>
+          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Available Bench:</div>
+          <div id="subBenchList" class="flex flex-col gap-1"></div>
+        </div>
+      </div>
+      <div class="p-2 border-t border-slate-800 text-center">
+        <button onclick="closeSubModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1.5 rounded text-xs">Done</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+
+const ALL_PLAYERS = [
+  {
+    "name": "Keyonte George",
+    "team": "Spazz Hands",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 7,
+    "free_throw": "11-85",
+    "field_goal": "11-47",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Darryn Peterson",
+    "team": "Spazz Hands",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-49",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Lauri Markkanen",
+    "team": "Spazz Hands",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 17,
+    "free_throw": "11-90",
+    "field_goal": "11-53",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Ace Bailey",
+    "team": "Spazz Hands",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 13,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-34",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jaren Jackson Jr.",
+    "team": "Spazz Hands",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "71-76",
+    "rebound": 15,
+    "free_throw": "11-85",
+    "field_goal": "11-50",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-34",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B7",
+    "assist": 2,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Jaxson Hayes",
+    "team": "Spazz Hands",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "65-72",
+    "rebound": 15,
+    "free_throw": "11-66",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 7,
+    "steal": "S2",
+    "block": "B4",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Brice Sensabaugh",
+    "team": "Spazz Hands",
+    "pos": "Forward / Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S1",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Isaiah Collier",
+    "team": "Spazz Hands",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 7,
+    "free_throw": "11-72",
+    "field_goal": "11-45",
+    "three_pointer": "11-32 (2)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Svi Mykhailiuk",
+    "team": "Spazz Hands",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 1",
+    "foul_range": "31-34",
+    "rebound": 5,
+    "free_throw": "11-80",
+    "field_goal": "11-44",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Luka Dončić",
+    "team": "Hollywood Flakers",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 19,
+    "free_throw": "11-78",
+    "field_goal": "11-53",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-42",
+    "shots": 22,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 10,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Austin Reaves",
+    "team": "Hollywood Flakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-86",
+    "field_goal": "11-50",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-38",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Collin Sexton",
+    "team": "Hollywood Flakers",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 7,
+    "free_throw": "11-86",
+    "field_goal": "11-51",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Quentin Grimes",
+    "team": "Hollywood Flakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-78",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Ziaire Williams",
+    "team": "Hollywood Flakers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 9,
+    "free_throw": "11-75",
+    "field_goal": "11-46",
+    "three_pointer": "11-34 (2)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Walker Kessler",
+    "team": "Hollywood Flakers",
+    "pos": "Center",
+    "def_rate": "Minus 4",
+    "foul_range": "71-76",
+    "rebound": 23,
+    "free_throw": "11-60",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-25",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B8",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Dalton Knecht",
+    "team": "Hollywood Flakers",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 7,
+    "free_throw": "11-80",
+    "field_goal": "11-47",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Jarred Vanderbilt",
+    "team": "Hollywood Flakers",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 14,
+    "free_throw": "11-66",
+    "field_goal": "11-50",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-26",
+    "shots": 7,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Gabe Vincent",
+    "team": "Hollywood Flakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 5,
+    "free_throw": "11-84",
+    "field_goal": "11-42",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "LeBron James",
+    "team": "Brick-Layers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "11-13",
+    "rebound": 16,
+    "free_throw": "11-75",
+    "field_goal": "11-56",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 8,
+    "foul_drawing": 15,
+    "injury": 1
+  },
+  {
+    "name": "Jaylen Brown",
+    "team": "Brick-Layers",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 13,
+    "free_throw": "11-73",
+    "field_goal": "11-54",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Joel Embiid",
+    "team": "Brick-Layers",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "71-76",
+    "rebound": 24,
+    "free_throw": "11-88",
+    "field_goal": "11-56",
+    "three_pointer": "11-38 (2)",
+    "secondary": "11-42",
+    "shots": 20,
+    "steal": "S2",
+    "block": "B5",
+    "assist": 6,
+    "foul_drawing": 17,
+    "injury": 1
+  },
+  {
+    "name": "Tyrese Maxey",
+    "team": "Brick-Layers",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 7,
+    "free_throw": "11-87",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-40",
+    "shots": 19,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Anfernee Simons",
+    "team": "Brick-Layers",
+    "pos": "Guard",
+    "def_rate": "Plus 2",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-92",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S1",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "V.J. Edgecombe",
+    "team": "Brick-Layers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 10,
+    "free_throw": "11-80",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "K. Caldwell-Pope",
+    "team": "Brick-Layers",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "41-44",
+    "rebound": 8,
+    "free_throw": "11-88",
+    "field_goal": "11-47",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-28",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Dean Wade",
+    "team": "Brick-Layers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "31-34",
+    "rebound": 14,
+    "free_throw": "11-75",
+    "field_goal": "11-45",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-26",
+    "shots": 7,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Adem Bona",
+    "team": "Brick-Layers",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "81-88",
+    "rebound": 21,
+    "free_throw": "11-66",
+    "field_goal": "11-62",
+    "three_pointer": "None",
+    "secondary": "11-22",
+    "shots": 6,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Kawhi Leonard",
+    "team": "Barney Rejects",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "31-34",
+    "rebound": 15,
+    "free_throw": "11-88",
+    "field_goal": "11-56",
+    "three_pointer": "11-42 (3)",
+    "secondary": "11-42",
+    "shots": 18,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 2
+  },
+  {
+    "name": "Scottie Barnes",
+    "team": "Barney Rejects",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 18,
+    "free_throw": "11-78",
+    "field_goal": "11-50",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B4",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Immanuel Quickley",
+    "team": "Barney Rejects",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 10,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "RJ Barrett",
+    "team": "Barney Rejects",
+    "pos": "Forward / Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-74",
+    "field_goal": "11-52",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-36",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Jakob Pöltl",
+    "team": "Barney Rejects",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "71-76",
+    "rebound": 24,
+    "free_throw": "11-58",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-26",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B6",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "C. Murray-Boyles",
+    "team": "Barney Rejects",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "61-65",
+    "rebound": 18,
+    "free_throw": "11-68",
+    "field_goal": "11-58",
+    "three_pointer": "None",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Ja'Kobe Walter",
+    "team": "Barney Rejects",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jamal Shead",
+    "team": "Barney Rejects",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 6,
+    "free_throw": "11-80",
+    "field_goal": "11-44",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-30",
+    "shots": 8,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "T. Jackson-Davis",
+    "team": "Barney Rejects",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "65-70",
+    "rebound": 19,
+    "free_throw": "11-64",
+    "field_goal": "11-68",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B5",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Stephen Curry",
+    "team": "Splash Daddies",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "21-24",
+    "rebound": 9,
+    "free_throw": "11-92",
+    "field_goal": "11-48",
+    "three_pointer": "11-43 (5)",
+    "secondary": "11-42",
+    "shots": 19,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jimmy Butler",
+    "team": "Splash Daddies",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "31-34",
+    "rebound": 14,
+    "free_throw": "11-86",
+    "field_goal": "11-52",
+    "three_pointer": "11-40 (2)",
+    "secondary": "11-40",
+    "shots": 15,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 17,
+    "injury": 1
+  },
+  {
+    "name": "K. Porziņģis",
+    "team": "Splash Daddies",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "65-70",
+    "rebound": 17,
+    "free_throw": "11-86",
+    "field_goal": "11-56",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 2,
+    "foul_drawing": 15,
+    "injury": 2
+  },
+  {
+    "name": "Draymond Green",
+    "team": "Splash Daddies",
+    "pos": "Forward / Center",
+    "def_rate": "Minus 4",
+    "foul_range": "71-76",
+    "rebound": 16,
+    "free_throw": "11-73",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (2)",
+    "secondary": "11-32",
+    "shots": 8,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 7,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jonathan Kuminga",
+    "team": "Splash Daddies",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 11,
+    "free_throw": "11-74",
+    "field_goal": "11-53",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "B. Podziemski",
+    "team": "Splash Daddies",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 14,
+    "free_throw": "11-70",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-34",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Moses Moody",
+    "team": "Splash Daddies",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 7,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Nikola Jokić",
+    "team": "Gold Diggers",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 29,
+    "free_throw": "11-82",
+    "field_goal": "11-60",
+    "three_pointer": "11-37 (2)",
+    "secondary": "11-44",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 11,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Jamal Murray",
+    "team": "Gold Diggers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "35-38",
+    "rebound": 9,
+    "free_throw": "11-86",
+    "field_goal": "11-50",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-40",
+    "shots": 17,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 7,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Aaron Gordon",
+    "team": "Gold Diggers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 15,
+    "free_throw": "11-66",
+    "field_goal": "11-56",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-34",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "M. Porter Jr.",
+    "team": "Gold Diggers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "31-34",
+    "rebound": 15,
+    "free_throw": "11-83",
+    "field_goal": "11-50",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Christian Braun",
+    "team": "Gold Diggers",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-76",
+    "field_goal": "11-54",
+    "three_pointer": "11-38 (2)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "R. Westbrook",
+    "team": "Gold Diggers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 13,
+    "free_throw": "11-68",
+    "field_goal": "11-46",
+    "three_pointer": "11-30 (2)",
+    "secondary": "11-38",
+    "shots": 13,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 7,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "S. Gilgeous-Alexander",
+    "team": "Static Cling",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-87",
+    "field_goal": "11-54",
+    "three_pointer": "11-36 (2)",
+    "secondary": "11-44",
+    "shots": 20,
+    "steal": "S5",
+    "block": "B3",
+    "assist": 7,
+    "foul_drawing": 17,
+    "injury": 0
+  },
+  {
+    "name": "Chet Holmgren",
+    "team": "Static Cling",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "51-55",
+    "rebound": 18,
+    "free_throw": "11-80",
+    "field_goal": "11-54",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B7",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Williams",
+    "team": "Static Cling",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 10,
+    "free_throw": "11-81",
+    "field_goal": "11-54",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-38",
+    "shots": 15,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Luguentz Dort",
+    "team": "Static Cling",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-40 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Alex Caruso",
+    "team": "Static Cling",
+    "pos": "Guard",
+    "def_rate": "Minus 5",
+    "foul_range": "51-55",
+    "rebound": 9,
+    "free_throw": "11-76",
+    "field_goal": "11-48",
+    "three_pointer": "11-40 (3)",
+    "secondary": "11-32",
+    "shots": 9,
+    "steal": "S5",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Cason Wallace",
+    "team": "Static Cling",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 6,
+    "free_throw": "11-84",
+    "field_goal": "11-50",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Isaiah Joe",
+    "team": "Static Cling",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 5,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Anthony Edwards",
+    "team": "Timber-Poodles",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "35-38",
+    "rebound": 12,
+    "free_throw": "11-84",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-40",
+    "shots": 20,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Rudy Gobert",
+    "team": "Timber-Poodles",
+    "pos": "Center",
+    "def_rate": "Minus 5",
+    "foul_range": "81-88",
+    "rebound": 28,
+    "free_throw": "11-64",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-25",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B8",
+    "assist": 1,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Julius Randle",
+    "team": "Timber-Poodles",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 19,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-33 (3)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Jaden McDaniels",
+    "team": "Timber-Poodles",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "65-72",
+    "rebound": 8,
+    "free_throw": "11-78",
+    "field_goal": "11-50",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Mike Conley",
+    "team": "Timber-Poodles",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "25-28",
+    "rebound": 6,
+    "free_throw": "11-90",
+    "field_goal": "11-46",
+    "three_pointer": "11-42 (3)",
+    "secondary": "11-34",
+    "shots": 10,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Naz Reid",
+    "team": "Timber-Poodles",
+    "pos": "Center / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "65-72",
+    "rebound": 13,
+    "free_throw": "11-76",
+    "field_goal": "11-50",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "D. DiVincenzo",
+    "team": "Timber-Poodles",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-34",
+    "shots": 15,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "De'Aaron Fox",
+    "team": "Burger Kings",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 10,
+    "free_throw": "11-74",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-40",
+    "shots": 20,
+    "steal": "S5",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Domantas Sabonis",
+    "team": "Burger Kings",
+    "pos": "Center / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "71-76",
+    "rebound": 30,
+    "free_throw": "11-71",
+    "field_goal": "11-61",
+    "three_pointer": "11-38 (1)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 8,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Zach LaVine",
+    "team": "Burger Kings",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-85",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-40",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "DeMar DeRozan",
+    "team": "Burger Kings",
+    "pos": "Forward / Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 10,
+    "free_throw": "11-86",
+    "field_goal": "11-49",
+    "three_pointer": "11-34 (1)",
+    "secondary": "11-40",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Keegan Murray",
+    "team": "Burger Kings",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 13,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Malik Monk",
+    "team": "Burger Kings",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 6,
+    "free_throw": "11-84",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-38",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Keon Ellis",
+    "team": "Burger Kings",
+    "pos": "Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 6,
+    "free_throw": "11-80",
+    "field_goal": "11-47",
+    "three_pointer": "11-42 (3)",
+    "secondary": "11-28",
+    "shots": 7,
+    "steal": "S5",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Kevin Durant",
+    "team": "Heat Strokes",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "31-35",
+    "rebound": 15,
+    "free_throw": "11-86",
+    "field_goal": "11-53",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-42",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B4",
+    "assist": 5,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Devin Booker",
+    "team": "Heat Strokes",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 10,
+    "free_throw": "11-89",
+    "field_goal": "11-50",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-40",
+    "shots": 19,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Bradley Beal",
+    "team": "Heat Strokes",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 9,
+    "free_throw": "11-80",
+    "field_goal": "11-52",
+    "three_pointer": "11-43 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 13,
+    "injury": 1
+  },
+  {
+    "name": "Tyus Jones",
+    "team": "Heat Strokes",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "21-24",
+    "rebound": 6,
+    "free_throw": "11-85",
+    "field_goal": "11-49",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Jusuf Nurkić",
+    "team": "Heat Strokes",
+    "pos": "Center",
+    "def_rate": "Plus 0",
+    "foul_range": "76-84",
+    "rebound": 26,
+    "free_throw": "11-70",
+    "field_goal": "11-52",
+    "three_pointer": "11-33 (1)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Khaman Maluach",
+    "team": "Heat Strokes",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "75-82",
+    "rebound": 22,
+    "free_throw": "11-68",
+    "field_goal": "11-60",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-26",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Kyrie Irving",
+    "team": "Sidekicks",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 11,
+    "free_throw": "11-90",
+    "field_goal": "11-50",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-42",
+    "shots": 19,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Klay Thompson",
+    "team": "Sidekicks",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "31-34",
+    "rebound": 7,
+    "free_throw": "11-91",
+    "field_goal": "11-44",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-34",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Cooper Flagg",
+    "team": "Sidekicks",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 17,
+    "free_throw": "11-82",
+    "field_goal": "11-52",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 17,
+    "steal": "S3",
+    "block": "B5",
+    "assist": 5,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "P.J. Washington",
+    "team": "Sidekicks",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 15,
+    "free_throw": "11-74",
+    "field_goal": "11-46",
+    "three_pointer": "11-35 (3)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Dereck Lively II",
+    "team": "Sidekicks",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "65-72",
+    "rebound": 20,
+    "free_throw": "11-65",
+    "field_goal": "11-75",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 7,
+    "steal": "S2",
+    "block": "B6",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Daniel Gafford",
+    "team": "Sidekicks",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "76-84",
+    "rebound": 18,
+    "free_throw": "11-70",
+    "field_goal": "11-72",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 8,
+    "steal": "S2",
+    "block": "B7",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Naji Marshall",
+    "team": "Sidekicks",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-80",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (2)",
+    "secondary": "11-32",
+    "shots": 9,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "V. Wembanyama",
+    "team": "Boot Scooters",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 6",
+    "foul_range": "51-55",
+    "rebound": 25,
+    "free_throw": "11-80",
+    "field_goal": "11-47",
+    "three_pointer": "11-33 (3)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B9",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Dylan Harper",
+    "team": "Boot Scooters",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 11,
+    "free_throw": "11-78",
+    "field_goal": "11-49",
+    "three_pointer": "11-35 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Stephon Castle",
+    "team": "Boot Scooters",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-75",
+    "field_goal": "11-50",
+    "three_pointer": "11-32 (2)",
+    "secondary": "11-34",
+    "shots": 13,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Devin Vassell",
+    "team": "Boot Scooters",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jeremy Sochan",
+    "team": "Boot Scooters",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 17,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-32 (2)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Harrison Barnes",
+    "team": "Boot Scooters",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 7,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jaden Springer",
+    "team": "Boot Scooters",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 6,
+    "free_throw": "11-75",
+    "field_goal": "11-44",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-26",
+    "shots": 6,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Alperen Şengün",
+    "team": "Bottle Rockets",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "71-76",
+    "rebound": 23,
+    "free_throw": "11-70",
+    "field_goal": "11-54",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-40",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 6,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Green",
+    "team": "Bottle Rockets",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-80",
+    "field_goal": "11-43",
+    "three_pointer": "11-34 (4)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Fred VanVleet",
+    "team": "Bottle Rockets",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "31-35",
+    "rebound": 8,
+    "free_throw": "11-86",
+    "field_goal": "11-42",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-38",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 8,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Amen Thompson",
+    "team": "Bottle Rockets",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 18,
+    "free_throw": "11-68",
+    "field_goal": "11-54",
+    "three_pointer": "None",
+    "secondary": "11-36",
+    "shots": 12,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jabari Smith Jr.",
+    "team": "Bottle Rockets",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 17,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Tari Eason",
+    "team": "Bottle Rockets",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "65-72",
+    "rebound": 17,
+    "free_throw": "11-76",
+    "field_goal": "11-50",
+    "three_pointer": "11-36 (2)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S5",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Dillon Brooks",
+    "team": "Bottle Rockets",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "65-72",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Brandon Ingram",
+    "team": "Paper Clips",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-81",
+    "field_goal": "11-52",
+    "three_pointer": "11-36 (2)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 1
+  },
+  {
+    "name": "Ivica Zubac",
+    "team": "Paper Clips",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "65-72",
+    "rebound": 23,
+    "free_throw": "11-72",
+    "field_goal": "11-65",
+    "three_pointer": "None",
+    "secondary": "11-25",
+    "shots": 10,
+    "steal": "S1",
+    "block": "B4",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Norman Powell",
+    "team": "Paper Clips",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-85",
+    "field_goal": "11-48",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Derrick Jones Jr.",
+    "team": "Paper Clips",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 9,
+    "free_throw": "11-74",
+    "field_goal": "11-50",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S3",
+    "block": "B4",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Terance Mann",
+    "team": "Paper Clips",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (2)",
+    "secondary": "11-32",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Amir Coffey",
+    "team": "Paper Clips",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 6,
+    "free_throw": "11-85",
+    "field_goal": "11-47",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-30",
+    "shots": 8,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Ja Morant",
+    "team": "Gummy Bears",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 12,
+    "free_throw": "11-82",
+    "field_goal": "11-48",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-44",
+    "shots": 20,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 9,
+    "foul_drawing": 17,
+    "injury": 1
+  },
+  {
+    "name": "Desmond Bane",
+    "team": "Gummy Bears",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 10,
+    "free_throw": "11-88",
+    "field_goal": "11-48",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-38",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Marcus Smart",
+    "team": "Gummy Bears",
+    "pos": "Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 8,
+    "free_throw": "11-78",
+    "field_goal": "11-44",
+    "three_pointer": "11-34 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S5",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "Zach Edey",
+    "team": "Gummy Bears",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "75-82",
+    "rebound": 26,
+    "free_throw": "11-72",
+    "field_goal": "11-65",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 12,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Santi Aldama",
+    "team": "Gummy Bears",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 14,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "GG Jackson",
+    "team": "Gummy Bears",
+    "pos": "Forward",
+    "def_rate": "Plus 1",
+    "foul_range": "51-55",
+    "rebound": 11,
+    "free_throw": "11-76",
+    "field_goal": "11-47",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-34",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Zion Williamson",
+    "team": "Beak Breakers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 13,
+    "free_throw": "11-70",
+    "field_goal": "11-58",
+    "three_pointer": "11-30 (1)",
+    "secondary": "11-42",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 17,
+    "injury": 1
+  },
+  {
+    "name": "Dejounte Murray",
+    "team": "Beak Breakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 12,
+    "free_throw": "11-80",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 18,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "CJ McCollum",
+    "team": "Beak Breakers",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "25-28",
+    "rebound": 10,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Trey Murphy III",
+    "team": "Beak Breakers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "31-34",
+    "rebound": 11,
+    "free_throw": "11-88",
+    "field_goal": "11-47",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Herbert Jones",
+    "team": "Beak Breakers",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 8,
+    "free_throw": "11-85",
+    "field_goal": "11-50",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Yves Missi",
+    "team": "Beak Breakers",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "76-84",
+    "rebound": 20,
+    "free_throw": "11-64",
+    "field_goal": "11-62",
+    "three_pointer": "None",
+    "secondary": "11-22",
+    "shots": 7,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Scoot Henderson",
+    "team": "Trail Grazers",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "61-66",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-45",
+    "three_pointer": "11-34 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Shaedon Sharpe",
+    "team": "Trail Grazers",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Deandre Ayton",
+    "team": "Trail Grazers",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 24,
+    "free_throw": "11-82",
+    "field_goal": "11-58",
+    "three_pointer": "None",
+    "secondary": "11-30",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Toumani Camara",
+    "team": "Trail Grazers",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "65-72",
+    "rebound": 12,
+    "free_throw": "11-75",
+    "field_goal": "11-48",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Deni Avdija",
+    "team": "Trail Grazers",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "51-55",
+    "rebound": 16,
+    "free_throw": "11-75",
+    "field_goal": "11-51",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Jerami Grant",
+    "team": "Trail Grazers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jayson Tatum",
+    "team": "Sham-Rockers",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 18,
+    "free_throw": "11-84",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-44",
+    "shots": 20,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Paul George",
+    "team": "Sham-Rockers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 13,
+    "free_throw": "11-90",
+    "field_goal": "11-50",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "Jrue Holiday",
+    "team": "Sham-Rockers",
+    "pos": "Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-84",
+    "field_goal": "11-49",
+    "three_pointer": "11-43 (3)",
+    "secondary": "11-34",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Derrick White",
+    "team": "Sham-Rockers",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 9,
+    "free_throw": "11-90",
+    "field_goal": "11-47",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Al Horford",
+    "team": "Sham-Rockers",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 15,
+    "free_throw": "11-85",
+    "field_goal": "11-52",
+    "three_pointer": "11-42 (3)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B4",
+    "assist": 4,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Payton Pritchard",
+    "team": "Sham-Rockers",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 8,
+    "free_throw": "11-85",
+    "field_goal": "11-48",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Brunson",
+    "team": "Knicker-Shockers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 7,
+    "free_throw": "11-85",
+    "field_goal": "11-48",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-44",
+    "shots": 21,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Karl-Anthony Towns",
+    "team": "Knicker-Shockers",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "71-76",
+    "rebound": 26,
+    "free_throw": "11-87",
+    "field_goal": "11-51",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-40",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "OG Anunoby",
+    "team": "Knicker-Shockers",
+    "pos": "Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-75",
+    "field_goal": "11-49",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Mikal Bridges",
+    "team": "Knicker-Shockers",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "31-34",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-45",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Josh Hart",
+    "team": "Knicker-Shockers",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 20,
+    "free_throw": "11-78",
+    "field_goal": "11-52",
+    "three_pointer": "11-34 (2)",
+    "secondary": "11-34",
+    "shots": 11,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "M. Robinson",
+    "team": "Knicker-Shockers",
+    "pos": "Center",
+    "def_rate": "Minus 4",
+    "foul_range": "76-84",
+    "rebound": 26,
+    "free_throw": "11-45",
+    "field_goal": "11-68",
+    "three_pointer": "None",
+    "secondary": "11-22",
+    "shots": 6,
+    "steal": "S3",
+    "block": "B7",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 2
+  },
+  {
+    "name": "Donovan Mitchell",
+    "team": "Sword Swallowers",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-86",
+    "field_goal": "11-47",
+    "three_pointer": "11-37 (4)",
+    "secondary": "11-44",
+    "shots": 20,
+    "steal": "S5",
+    "block": "B2",
+    "assist": 7,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "James Harden",
+    "team": "Sword Swallowers",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-88",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 9,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Darius Garland",
+    "team": "Sword Swallowers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "35-38",
+    "rebound": 6,
+    "free_throw": "11-87",
+    "field_goal": "11-46",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-40",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Evan Mobley",
+    "team": "Sword Swallowers",
+    "pos": "Forward / Center",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 20,
+    "free_throw": "11-72",
+    "field_goal": "11-58",
+    "three_pointer": "11-38 (1)",
+    "secondary": "11-34",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B5",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Jarrett Allen",
+    "team": "Sword Swallowers",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "65-72",
+    "rebound": 24,
+    "free_throw": "11-74",
+    "field_goal": "11-70",
+    "three_pointer": "None",
+    "secondary": "11-26",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Caris LeVert",
+    "team": "Sword Swallowers",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-78",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Tyler Herro",
+    "team": "Star-Bucks",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "25-28",
+    "rebound": 11,
+    "free_throw": "11-88",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-34",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 13,
+    "injury": 1
+  },
+  {
+    "name": "Kyle Kuzma",
+    "team": "Star-Bucks",
+    "pos": "Forward",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 14,
+    "free_throw": "11-80",
+    "field_goal": "11-49",
+    "three_pointer": "11-34 (3)",
+    "secondary": "11-36",
+    "shots": 18,
+    "steal": "S1",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Damian Lillard",
+    "team": "Star-Bucks",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "31-35",
+    "rebound": 9,
+    "free_throw": "11-92",
+    "field_goal": "11-44",
+    "three_pointer": "11-36 (4)",
+    "secondary": "11-42",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 17,
+    "injury": 0
+  },
+  {
+    "name": "Brook Lopez",
+    "team": "Star-Bucks",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 12,
+    "free_throw": "11-82",
+    "field_goal": "11-49",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-28",
+    "shots": 10,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Bobby Portis",
+    "team": "Star-Bucks",
+    "pos": "Forward / Center",
+    "def_rate": "Plus 0",
+    "foul_range": "61-66",
+    "rebound": 19,
+    "free_throw": "11-80",
+    "field_goal": "11-51",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Gary Trent Jr.",
+    "team": "Star-Bucks",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "35-38",
+    "rebound": 6,
+    "free_throw": "11-84",
+    "field_goal": "11-45",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-30",
+    "shots": 14,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Tyrese Haliburton",
+    "team": "Heart Pacemakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "21-25",
+    "rebound": 9,
+    "free_throw": "11-86",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (4)",
+    "secondary": "11-44",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 12,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Pascal Siakam",
+    "team": "Heart Pacemakers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 16,
+    "free_throw": "11-74",
+    "field_goal": "11-54",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-40",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Myles Turner",
+    "team": "Heart Pacemakers",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "71-76",
+    "rebound": 16,
+    "free_throw": "11-78",
+    "field_goal": "11-53",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B5",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Andrew Nembhard",
+    "team": "Heart Pacemakers",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 7,
+    "free_throw": "11-82",
+    "field_goal": "11-50",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 13,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Aaron Nesmith",
+    "team": "Heart Pacemakers",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "65-72",
+    "rebound": 9,
+    "free_throw": "11-80",
+    "field_goal": "11-50",
+    "three_pointer": "11-42 (3)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "T.J. McConnell",
+    "team": "Heart Pacemakers",
+    "pos": "Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 6,
+    "free_throw": "11-80",
+    "field_goal": "11-55",
+    "three_pointer": "11-33 (1)",
+    "secondary": "11-36",
+    "shots": 11,
+    "steal": "S5",
+    "block": "B1",
+    "assist": 8,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "G. Antetokounmpo",
+    "team": "Heat Waves",
+    "pos": "Forward / Center",
+    "def_rate": "Minus 4",
+    "foul_range": "71-76",
+    "rebound": 26,
+    "free_throw": "11-66",
+    "field_goal": "11-62",
+    "three_pointer": "11-27 (1)",
+    "secondary": "11-42",
+    "shots": 20,
+    "steal": "S2",
+    "block": "B4",
+    "assist": 6,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Bam Adebayo",
+    "team": "Heat Waves",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "51-55",
+    "rebound": 22,
+    "free_throw": "11-76",
+    "field_goal": "11-53",
+    "three_pointer": "11-36 (1)",
+    "secondary": "11-40",
+    "shots": 15,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 5,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "I. Hartenstein",
+    "team": "Heat Waves",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "71-76",
+    "rebound": 20,
+    "free_throw": "11-70",
+    "field_goal": "11-65",
+    "three_pointer": "None",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Terry Rozier",
+    "team": "Heat Waves",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 8,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jaime Jaquez Jr.",
+    "team": "Heat Waves",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-82",
+    "field_goal": "11-50",
+    "three_pointer": "11-34 (2)",
+    "secondary": "11-36",
+    "shots": 13,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Duncan Robinson",
+    "team": "Heat Waves",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "51-55",
+    "rebound": 6,
+    "free_throw": "11-88",
+    "field_goal": "11-46",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S1",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Paolo Banchero",
+    "team": "Disney Tricks",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 16,
+    "free_throw": "11-73",
+    "field_goal": "11-46",
+    "three_pointer": "11-34 (3)",
+    "secondary": "11-44",
+    "shots": 18,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 17,
+    "injury": 0
+  },
+  {
+    "name": "Franz Wagner",
+    "team": "Disney Tricks",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-85",
+    "field_goal": "11-53",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-36",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Suggs",
+    "team": "Disney Tricks",
+    "pos": "Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "65-72",
+    "rebound": 7,
+    "free_throw": "11-76",
+    "field_goal": "11-48",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "W. Carter Jr.",
+    "team": "Disney Tricks",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "61-66",
+    "rebound": 18,
+    "free_throw": "11-75",
+    "field_goal": "11-54",
+    "three_pointer": "11-37 (2)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 1
+  },
+  {
+    "name": "K. Caldwell-Pope",
+    "team": "Disney Tricks",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "41-44",
+    "rebound": 8,
+    "free_throw": "11-88",
+    "field_goal": "11-47",
+    "three_pointer": "11-41 (3)",
+    "secondary": "11-28",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Cole Anthony",
+    "team": "Disney Tricks",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-84",
+    "field_goal": "11-45",
+    "three_pointer": "11-35 (3)",
+    "secondary": "11-34",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Coby White",
+    "team": "Bull Shooters",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "31-35",
+    "rebound": 10,
+    "free_throw": "11-84",
+    "field_goal": "11-47",
+    "three_pointer": "11-37 (4)",
+    "secondary": "11-36",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Josh Giddey",
+    "team": "Bull Shooters",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 14,
+    "free_throw": "11-78",
+    "field_goal": "11-47",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-38",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 8,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Nikola Vučević",
+    "team": "Bull Shooters",
+    "pos": "Center",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 24,
+    "free_throw": "11-82",
+    "field_goal": "11-50",
+    "three_pointer": "11-34 (3)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Matas Buzelis",
+    "team": "Bull Shooters",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 11,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Patrick Williams",
+    "team": "Bull Shooters",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-78",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Ayo Dosunmu",
+    "team": "Bull Shooters",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 7,
+    "free_throw": "11-82",
+    "field_goal": "11-50",
+    "three_pointer": "11-40 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Khris Middleton",
+    "team": "Noodle Wizards",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 11,
+    "free_throw": "11-86",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "Jordan Poole",
+    "team": "Noodle Wizards",
+    "pos": "Guard",
+    "def_rate": "Plus 2",
+    "foul_range": "51-55",
+    "rebound": 6,
+    "free_throw": "11-86",
+    "field_goal": "11-42",
+    "three_pointer": "11-33 (4)",
+    "secondary": "11-40",
+    "shots": 17,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Alex Sarr",
+    "team": "Noodle Wizards",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "65-70",
+    "rebound": 19,
+    "free_throw": "11-72",
+    "field_goal": "11-50",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-32",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B6",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Bilal Coulibaly",
+    "team": "Noodle Wizards",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 11,
+    "free_throw": "11-76",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-32",
+    "shots": 13,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "J. Valančiūnas",
+    "team": "Noodle Wizards",
+    "pos": "Center",
+    "def_rate": "Plus 0",
+    "foul_range": "71-76",
+    "rebound": 24,
+    "free_throw": "11-82",
+    "field_goal": "11-57",
+    "three_pointer": "11-33 (1)",
+    "secondary": "11-28",
+    "shots": 13,
+    "steal": "S1",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Corey Kispert",
+    "team": "Noodle Wizards",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 7,
+    "free_throw": "11-88",
+    "field_goal": "11-48",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-28",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Trae Young",
+    "team": "Chicken Wings",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "21-25",
+    "rebound": 6,
+    "free_throw": "11-86",
+    "field_goal": "11-43",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-44",
+    "shots": 18,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 11,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Z. Risacher",
+    "team": "Chicken Wings",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 10,
+    "free_throw": "11-76",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-32",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Johnson",
+    "team": "Chicken Wings",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 20,
+    "free_throw": "11-74",
+    "field_goal": "11-53",
+    "three_pointer": "11-35 (2)",
+    "secondary": "11-38",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 6,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Dyson Daniels",
+    "team": "Chicken Wings",
+    "pos": "Guard",
+    "def_rate": "Minus 5",
+    "foul_range": "41-45",
+    "rebound": 12,
+    "free_throw": "11-68",
+    "field_goal": "11-47",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S6",
+    "block": "B3",
+    "assist": 5,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Clint Capela",
+    "team": "Chicken Wings",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "65-70",
+    "rebound": 25,
+    "free_throw": "11-62",
+    "field_goal": "11-62",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 9,
+    "steal": "S1",
+    "block": "B5",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "B. Bogdanović",
+    "team": "Chicken Wings",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 9,
+    "free_throw": "11-90",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-36",
+    "shots": 15,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "LaMelo Ball",
+    "team": "Buzz Kills",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 13,
+    "free_throw": "11-86",
+    "field_goal": "11-43",
+    "three_pointer": "11-36 (4)",
+    "secondary": "11-42",
+    "shots": 20,
+    "steal": "S4",
+    "block": "B1",
+    "assist": 9,
+    "foul_drawing": 15,
+    "injury": 1
+  },
+  {
+    "name": "Brandon Miller",
+    "team": "Buzz Kills",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-82",
+    "field_goal": "11-45",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-36",
+    "shots": 16,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Kon Knueppel",
+    "team": "Buzz Kills",
+    "pos": "Forward / Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 10,
+    "free_throw": "11-86",
+    "field_goal": "11-48",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-34",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Miles Bridges",
+    "team": "Buzz Kills",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 16,
+    "free_throw": "11-82",
+    "field_goal": "11-50",
+    "three_pointer": "11-35 (3)",
+    "secondary": "11-38",
+    "shots": 17,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 15,
+    "injury": 0
+  },
+  {
+    "name": "Mark Williams",
+    "team": "Buzz Kills",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "71-76",
+    "rebound": 24,
+    "free_throw": "11-72",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 9,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "Tre Mann",
+    "team": "Buzz Kills",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Cam Thomas",
+    "team": "Nothing But Nets",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "31-35",
+    "rebound": 7,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (4)",
+    "secondary": "11-40",
+    "shots": 20,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Dennis Schröder",
+    "team": "Nothing But Nets",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 7,
+    "free_throw": "11-85",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Cameron Johnson",
+    "team": "Nothing But Nets",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "35-38",
+    "rebound": 10,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "D. Finney-Smith",
+    "team": "Nothing But Nets",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 11,
+    "free_throw": "11-74",
+    "field_goal": "11-46",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Nicolas Claxton",
+    "team": "Nothing But Nets",
+    "pos": "Center",
+    "def_rate": "Minus 4",
+    "foul_range": "65-72",
+    "rebound": 23,
+    "free_throw": "11-58",
+    "field_goal": "11-65",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B6",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Noah Clowney",
+    "team": "Nothing But Nets",
+    "pos": "Forward / Center",
+    "def_rate": "Plus 0",
+    "foul_range": "61-66",
+    "rebound": 14,
+    "free_throw": "11-76",
+    "field_goal": "11-50",
+    "three_pointer": "11-36 (2)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S1",
+    "block": "B4",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Cade Cunningham",
+    "team": "Flat Tires",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 12,
+    "free_throw": "11-86",
+    "field_goal": "11-45",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-42",
+    "shots": 19,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 9,
+    "foul_drawing": 16,
+    "injury": 0
+  },
+  {
+    "name": "Jaden Ivey",
+    "team": "Flat Tires",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-76",
+    "field_goal": "11-47",
+    "three_pointer": "11-35 (3)",
+    "secondary": "11-36",
+    "shots": 16,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 5,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Duren",
+    "team": "Flat Tires",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "71-76",
+    "rebound": 26,
+    "free_throw": "11-78",
+    "field_goal": "11-64",
+    "three_pointer": "None",
+    "secondary": "11-26",
+    "shots": 10,
+    "steal": "S1",
+    "block": "B4",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Tobias Harris",
+    "team": "Flat Tires",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "31-35",
+    "rebound": 15,
+    "free_throw": "11-86",
+    "field_goal": "11-50",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-34",
+    "shots": 14,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Ausar Thompson",
+    "team": "Flat Tires",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "61-66",
+    "rebound": 17,
+    "free_throw": "11-65",
+    "field_goal": "11-48",
+    "three_pointer": "None",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S4",
+    "block": "B4",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Malik Beasley",
+    "team": "Flat Tires",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 7,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-30",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Ricky Council IV",
+    "team": "Brick-Layers",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-78",
+    "field_goal": "11-47",
+    "three_pointer": "11-34 (2)",
+    "secondary": "11-36",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Sam Hauser",
+    "team": "Sham-Rockers",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "31-34",
+    "rebound": 8,
+    "free_throw": "11-88",
+    "field_goal": "11-46",
+    "three_pointer": "11-43 (4)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Neemias Queta",
+    "team": "Sham-Rockers",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "71-76",
+    "rebound": 20,
+    "free_throw": "11-62",
+    "field_goal": "11-65",
+    "three_pointer": "None",
+    "secondary": "11-20",
+    "shots": 7,
+    "steal": "S2",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jaylen Wells",
+    "team": "Gummy Bears",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-47",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Scotty Pippen Jr.",
+    "team": "Gummy Bears",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "61-66",
+    "rebound": 7,
+    "free_throw": "11-76",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 11,
+    "steal": "S5",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Bub Carrington",
+    "team": "Noodle Wizards",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-80",
+    "field_goal": "11-45",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-36",
+    "shots": 13,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Kyshawn George",
+    "team": "Noodle Wizards",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 9,
+    "free_throw": "11-78",
+    "field_goal": "11-44",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-32",
+    "shots": 11,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Miles McBride",
+    "team": "Knicker-Shockers",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "35-38",
+    "rebound": 5,
+    "free_throw": "11-86",
+    "field_goal": "11-46",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-32",
+    "shots": 12,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Julian Strawther",
+    "team": "Gold Diggers",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 6,
+    "free_throw": "11-82",
+    "field_goal": "11-45",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-30",
+    "shots": 11,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Mason Plumlee",
+    "team": "Heat Strokes",
+    "pos": "Center",
+    "def_rate": "Minus 1",
+    "foul_range": "71-76",
+    "rebound": 20,
+    "free_throw": "11-66",
+    "field_goal": "11-62",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 7,
+    "steal": "S2",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Kris Dunn",
+    "team": "Paper Clips",
+    "pos": "Guard",
+    "def_rate": "Minus 5",
+    "foul_range": "61-66",
+    "rebound": 8,
+    "free_throw": "11-70",
+    "field_goal": "11-47",
+    "three_pointer": "11-33 (2)",
+    "secondary": "11-30",
+    "shots": 8,
+    "steal": "S6",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Jordan Hawkins",
+    "team": "Beak Breakers",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "31-35",
+    "rebound": 6,
+    "free_throw": "11-84",
+    "field_goal": "11-44",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-30",
+    "shots": 13,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "R. Williams III",
+    "team": "Trail Grazers",
+    "pos": "Center",
+    "def_rate": "Minus 4",
+    "foul_range": "71-76",
+    "rebound": 22,
+    "free_throw": "11-68",
+    "field_goal": "11-68",
+    "three_pointer": "None",
+    "secondary": "11-22",
+    "shots": 7,
+    "steal": "S3",
+    "block": "B7",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 1
+  },
+  {
+    "name": "Isaac Okoro",
+    "team": "Sword Swallowers",
+    "pos": "Forward / Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-74",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "AJ Green",
+    "team": "Star-Bucks",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 5,
+    "free_throw": "11-88",
+    "field_goal": "11-45",
+    "three_pointer": "11-42 (4)",
+    "secondary": "11-26",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Ben Sheppard",
+    "team": "Heart Pacemakers",
+    "pos": "Guard",
+    "def_rate": "Minus 1",
+    "foul_range": "35-38",
+    "rebound": 6,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "H. Highsmith",
+    "team": "Heat Waves",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 8,
+    "free_throw": "11-75",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S4",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Anthony Black",
+    "team": "Disney Tricks",
+    "pos": "Guard",
+    "def_rate": "Minus 3",
+    "foul_range": "51-55",
+    "rebound": 8,
+    "free_throw": "11-70",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (2)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 4,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Smith",
+    "team": "Bull Shooters",
+    "pos": "Center / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "61-66",
+    "rebound": 16,
+    "free_throw": "11-82",
+    "field_goal": "11-54",
+    "three_pointer": "11-39 (3)",
+    "secondary": "11-28",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B4",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Onyeka Okongwu",
+    "team": "Chicken Wings",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "65-72",
+    "rebound": 18,
+    "free_throw": "11-78",
+    "field_goal": "11-60",
+    "three_pointer": "11-33 (1)",
+    "secondary": "11-28",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B5",
+    "assist": 2,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Grant Williams",
+    "team": "Buzz Kills",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "61-66",
+    "rebound": 11,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Jalen Wilson",
+    "team": "Nothing But Nets",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "41-45",
+    "rebound": 9,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "S. Fontecchio",
+    "team": "Flat Tires",
+    "pos": "Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "35-38",
+    "rebound": 8,
+    "free_throw": "11-82",
+    "field_goal": "11-46",
+    "three_pointer": "11-39 (4)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "B. Scheierman",
+    "team": "Sham-Rockers",
+    "pos": "Guard / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "31-34",
+    "rebound": 7,
+    "free_throw": "11-84",
+    "field_goal": "11-46",
+    "three_pointer": "11-40 (4)",
+    "secondary": "11-28",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Luke Kennard",
+    "team": "Gummy Bears",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "25-28",
+    "rebound": 5,
+    "free_throw": "11-88",
+    "field_goal": "11-46",
+    "three_pointer": "11-45 (5)",
+    "secondary": "11-28",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "T. Vukčević",
+    "team": "Noodle Wizards",
+    "pos": "Center / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-26",
+    "shots": 9,
+    "steal": "S1",
+    "block": "B2",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "G. Yabusele",
+    "team": "Brick-Layers",
+    "pos": "Forward / Center",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 12,
+    "free_throw": "11-78",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-32",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Nikola Jović",
+    "team": "Heat Waves",
+    "pos": "Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "51-55",
+    "rebound": 14,
+    "free_throw": "11-82",
+    "field_goal": "11-48",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-34",
+    "shots": 12,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 5,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Kel'el Ware",
+    "team": "Heat Waves",
+    "pos": "Center",
+    "def_rate": "Minus 3",
+    "foul_range": "65-72",
+    "rebound": 22,
+    "free_throw": "11-70",
+    "field_goal": "11-62",
+    "three_pointer": "11-32 (1)",
+    "secondary": "11-26",
+    "shots": 9,
+    "steal": "S1",
+    "block": "B6",
+    "assist": 1,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Davion Mitchell",
+    "team": "Heat Waves",
+    "pos": "Guard",
+    "def_rate": "Minus 4",
+    "foul_range": "41-45",
+    "rebound": 6,
+    "free_throw": "11-76",
+    "field_goal": "11-46",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-34",
+    "shots": 11,
+    "steal": "S5",
+    "block": "B1",
+    "assist": 7,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Pelle Larsson",
+    "team": "Heat Waves",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 1",
+    "foul_range": "41-45",
+    "rebound": 8,
+    "free_throw": "11-80",
+    "field_goal": "11-46",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-30",
+    "shots": 10,
+    "steal": "S3",
+    "block": "B1",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Dario Šarić",
+    "team": "Gold Diggers",
+    "pos": "Center / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "51-55",
+    "rebound": 14,
+    "free_throw": "11-82",
+    "field_goal": "11-48",
+    "three_pointer": "11-36 (3)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 4,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Monte Morris",
+    "team": "Heat Strokes",
+    "pos": "Guard",
+    "def_rate": "Plus 0",
+    "foul_range": "21-24",
+    "rebound": 5,
+    "free_throw": "11-84",
+    "field_goal": "11-46",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-30",
+    "shots": 9,
+    "steal": "S2",
+    "block": "B1",
+    "assist": 6,
+    "foul_drawing": 11,
+    "injury": 0
+  },
+  {
+    "name": "Kenrich Williams",
+    "team": "Static Cling",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "51-55",
+    "rebound": 10,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-37 (3)",
+    "secondary": "11-28",
+    "shots": 8,
+    "steal": "S3",
+    "block": "B2",
+    "assist": 3,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Kyle Anderson",
+    "team": "Splash Daddies",
+    "pos": "Forward",
+    "def_rate": "Minus 3",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-74",
+    "field_goal": "11-48",
+    "three_pointer": "11-33 (1)",
+    "secondary": "11-32",
+    "shots": 8,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 5,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Kelly Olynyk",
+    "team": "Barney Rejects",
+    "pos": "Center / Forward",
+    "def_rate": "Plus 0",
+    "foul_range": "61-66",
+    "rebound": 15,
+    "free_throw": "11-84",
+    "field_goal": "11-50",
+    "three_pointer": "11-38 (3)",
+    "secondary": "11-32",
+    "shots": 10,
+    "steal": "S2",
+    "block": "B2",
+    "assist": 6,
+    "foul_drawing": 13,
+    "injury": 0
+  },
+  {
+    "name": "Andrew Wiggins",
+    "team": "Heat Waves",
+    "pos": "Forward",
+    "def_rate": "Minus 2",
+    "foul_range": "41-45",
+    "rebound": 11,
+    "free_throw": "11-78",
+    "field_goal": "11-48",
+    "three_pointer": "11-41 (4)",
+    "secondary": "11-36",
+    "shots": 14,
+    "steal": "S3",
+    "block": "B3",
+    "assist": 3,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "T. Hardaway Jr.",
+    "team": "Heat Waves",
+    "pos": "Guard",
+    "def_rate": "Plus 1",
+    "foul_range": "31-35",
+    "rebound": 7,
+    "free_throw": "11-85",
+    "field_goal": "11-44",
+    "three_pointer": "11-38 (4)",
+    "secondary": "11-30",
+    "shots": 12,
+    "steal": "S1",
+    "block": "B1",
+    "assist": 2,
+    "foul_drawing": 12,
+    "injury": 0
+  },
+  {
+    "name": "Nick Richards",
+    "team": "Heat Waves",
+    "pos": "Center",
+    "def_rate": "Minus 2",
+    "foul_range": "71-76",
+    "rebound": 23,
+    "free_throw": "11-74",
+    "field_goal": "11-66",
+    "three_pointer": "None",
+    "secondary": "11-24",
+    "shots": 8,
+    "steal": "S1",
+    "block": "B5",
+    "assist": 1,
+    "foul_drawing": 14,
+    "injury": 0
+  },
+  {
+    "name": "Ben Simmons",
+    "team": "Burger Kings",
+    "pos": "Guard / Forward",
+    "def_rate": "Minus 4",
+    "foul_range": "51-55",
+    "rebound": 19,
+    "free_throw": "11-45",
+    "field_goal": "11-58",
+    "three_pointer": "None",
+    "secondary": "11-38",
+    "shots": 8,
+    "steal": "S4",
+    "block": "B3",
+    "assist": 8,
+    "foul_drawing": 14,
+    "injury": 1
+  }
+];
+
+// Build team lookup table
+const TEAM_ROSTERS = {};
+ALL_PLAYERS.forEach(p => {
+  if (!TEAM_ROSTERS[p.team]) TEAM_ROSTERS[p.team] = [];
+  const fgMatch = p.field_goal.match(/11-(\d+)/);
+  const tpMatch = p.three_pointer.match(/11-(\d+)\s*\(?(\d+)?\)?/);
+  const ftMatch = p.free_throw.match(/11-(\d+)/);
+  const defMatch = p.def_rate.match(/(Minus|Plus)\s*(\d+)/);
+
+  TEAM_ROSTERS[p.team].push({
+    ...p,
+    fgNum: fgMatch ? parseInt(fgMatch[1]) : 45,
+    tpNum: tpMatch ? parseInt(tpMatch[1]) : 0,
+    tpVol: tpMatch && tpMatch[2] ? parseInt(tpMatch[2]) : (p.three_pointer === "None" ? 0 : 2),
+    ftNum: ftMatch ? parseInt(ftMatch[1]) : 75,
+    defMod: defMatch ? (defMatch[1] === "Minus" ? -parseInt(defMatch[2]) : parseInt(defMatch[2])) : 0,
+    fouls: 0,
+    pts: 0,
+    shotsRemaining: p.shots
+  });
+});
+
+let netRole = 'solo'; // 'host', 'client', or 'solo'
+let peer = null;
+let conn = null;
+
+let homeTeamKey = "Spazz Hands";
+let awayTeamKey = "Hollywood Flakers";
+
+let currentMatchup = {
+  home: { teamName: homeTeamKey, coachName: "Player 2", active: [], bench: [] },
+  away: { teamName: awayTeamKey, coachName: "Player 1", active: [], bench: [] }
+};
+
+let gameState = {
+  quarter: 1,
+  secondsLeft: 720,
+  possession: 'away', // 'away' = Player 1, 'home' = Player 2
+  homeScore: 0,
+  awayScore: 0,
+  homeFouls: 0,
+  awayFouls: 0
+};
+
+let subState = {
+  teamSide: 'away',
+  selectedCourtIndex: 0
+};
+
+function initMatchup(hKey, aKey) {
+  homeTeamKey = hKey;
+  awayTeamKey = aKey;
+
+  const hPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[hKey] || []));
+  const aPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[aKey] || []));
+
+  currentMatchup.home = { teamName: hKey, coachName: "Player 2", active: hPool.slice(0, 5), bench: hPool.slice(5) };
+  currentMatchup.away = { teamName: aKey, coachName: "Player 1", active: aPool.slice(0, 5), bench: aPool.slice(5) };
+
+  document.getElementById('homeTeamName').textContent = hKey.toUpperCase();
+  document.getElementById('awayTeamName').textContent = aKey.toUpperCase();
+}
+
+function rollD88() {
+  const d1 = Math.floor(Math.random() * 8) + 1;
+  const d2 = Math.floor(Math.random() * 8) + 1;
+  return (d1 * 10) + d2;
+}
+
+function logMessage(msg) {
+  const log = document.getElementById('playLog');
+  const entry = document.createElement('div');
+  entry.className = "py-0.5 border-b border-slate-800/80";
+  entry.innerHTML = msg;
+  log.prepend(entry);
+}
+
+// ================= WEBRTC PEERJS MULTIPLAYER =================
+function startHosting() {
+  netRole = 'host';
+  const shortCode = Math.floor(1000 + Math.random() * 9000).toString();
+  const fullPeerId = `statis-2026-${shortCode}`;
+
+  peer = new Peer(fullPeerId);
+
+  peer.on('open', (id) => {
+    document.getElementById('myRoomCode').textContent = shortCode;
+    document.getElementById('hostCodeBox').classList.remove('hidden');
+    document.getElementById('btnHost').classList.add('hidden');
+  });
+
+  peer.on('connection', (c) => {
+    conn = c;
+    setupConnectionHandlers();
+    onNetworkConnected("Connected with Son (Player 2)!");
+    // Sync initial state to client
+    broadcastSync();
+  });
+
+  peer.on('error', (err) => {
+    console.error("PeerJS error:", err);
+    alert("Connection error. Try clicking generate again.");
+  });
+}
+
+function joinRoom() {
+  const code = document.getElementById('inputJoinCode').value.trim();
+  if (code.length < 4) {
+    alert("Please enter a valid 4-digit code.");
+    return;
+  }
+  netRole = 'client';
+  const targetId = `statis-2026-${code}`;
+  
+  peer = new Peer();
+  peer.on('open', () => {
+    conn = peer.connect(targetId);
+    setupConnectionHandlers();
+  });
+
+  peer.on('error', (err) => {
+    console.error(err);
+    alert("Could not connect to that code. Check Phone 1 and try again.");
+  });
+}
+
+function setupConnectionHandlers() {
+  conn.on('open', () => {
+    onNetworkConnected(netRole === 'client' ? "Connected with Dad (Player 1)!" : "Connected with Son (Player 2)!");
+    closeLobbyModal();
+  });
+
+  conn.on('data', (data) => {
+    if (data.type === 'SYNC') {
+      gameState = data.gameState;
+      currentMatchup = data.currentMatchup;
+      if (data.msg) logMessage(data.msg);
+      updateUI();
+    }
+  });
+
+  conn.on('close', () => {
+    alert("Opponent disconnected.");
+    document.getElementById('connDot').className = "w-2 h-2 rounded-full bg-rose-500";
+    document.getElementById('connLabel').textContent = "Disconnected";
+  });
+}
+
+function onNetworkConnected(label) {
+  document.getElementById('connDot').className = "w-2 h-2 rounded-full bg-emerald-400";
+  document.getElementById('connLabel').textContent = "P2P Online";
+  document.getElementById('myRoleTag').textContent = netRole === 'host' ? "You: Player 1 (Away)" : "You: Player 2 (Home)";
+  document.getElementById('p1CoachTitle').textContent = netRole === 'host' ? "YOU (AWAY)" : "DAD (AWAY)";
+  document.getElementById('p2CoachTitle').textContent = netRole === 'client' ? "YOU (HOME)" : "SON (HOME)";
+  logMessage(`<strong class="text-emerald-400">⚡ MULTIPLAYER LIVE: ${label}</strong>`);
+}
+
+function broadcastSync(msg = "") {
+  if (conn && conn.open) {
+    conn.send({
+      type: 'SYNC',
+      gameState,
+      currentMatchup,
+      msg
+    });
+  }
+}
+
+// ================= GAMEPLAY ENGINE (MODERN NBA STATIS PRO) =================
+function isMyTurn() {
+  if (netRole === 'solo') return true;
+  if (netRole === 'host' && gameState.possession === 'away') return true;
+  if (netRole === 'client' && gameState.possession === 'home') return true;
+  return false;
+}
+
+function updateUI() {
+  document.getElementById('homeScore').textContent = gameState.homeScore;
+  document.getElementById('awayScore').textContent = gameState.awayScore;
+  document.getElementById('homeFouls').textContent = `Fouls: ${gameState.homeFouls}`;
+  document.getElementById('awayFouls').textContent = `Fouls: ${gameState.awayFouls}`;
+
+  const mins = Math.floor(gameState.secondsLeft / 60);
+  const secs = gameState.secondsLeft % 60;
+  document.getElementById('clockDisplay').textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  document.getElementById('quarterDisplay').textContent = `Q${gameState.quarter}`;
+
+  const isP1Poss = gameState.possession === 'away';
+  const p1Box = document.getElementById('p1Box');
+  const p2Box = document.getElementById('p2Box');
+  const p1Role = document.getElementById('p1RoleBadge');
+  const p2Role = document.getElementById('p2RoleBadge');
+  const turnBanner = document.getElementById('turnBannerText');
+
+  if (isP1Poss) {
+    p1Box.className = "bg-slate-800/90 p-2 rounded-lg border-2 border-amber-500 shadow-lg scale-[1.02] transition-all";
+    p2Box.className = "bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80";
+    p1Role.className = "bg-amber-500 text-slate-950 px-1 rounded text-[8px] font-black";
+    p1Role.textContent = "OFFENSE";
+    p2Role.className = "bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black";
+    p2Role.textContent = "DEFENSE";
+    turnBanner.textContent = `P1 (${currentMatchup.away.teamName}): Choose Offensive Play`;
+  } else {
+    p2Box.className = "bg-slate-800/90 p-2 rounded-lg border-2 border-sky-500 shadow-lg scale-[1.02] transition-all";
+    p1Box.className = "bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80";
+    p2Role.className = "bg-sky-500 text-slate-950 px-1 rounded text-[8px] font-black";
+    p2Role.textContent = "OFFENSE";
+    p1Role.className = "bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black";
+    p1Role.textContent = "DEFENSE";
+    turnBanner.textContent = `P2 (${currentMatchup.home.teamName}): Choose Offensive Play`;
+  }
+
+  // Render on-court active 5
+  const offTeam = isP1Poss ? currentMatchup.away : currentMatchup.home;
+  const container = document.getElementById('lineupContainer');
+  container.innerHTML = "";
+
+  offTeam.active.forEach(p => {
+    const card = document.createElement('div');
+    card.className = "bg-slate-800 border border-slate-700 p-2 rounded-lg flex justify-between items-center text-xs shadow-sm";
+    card.innerHTML = `
+      <div>
+        <div class="flex items-center gap-1.5">
+          <span class="font-black text-white">${p.name}</span>
+          <span class="text-slate-400 font-mono text-[10px]">(${p.pos})</span>
+          <span class="text-[9px] px-1 py-0.2 bg-slate-900 text-slate-300 rounded font-mono font-bold">${p.def_rate}</span>
+        </div>
+        <div class="text-[10px] text-slate-400 mt-0.5 font-mono">
+          FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum + ' (' + p.tpVol + ')' : 'None'} | FT: 11-${p.ftNum}
+        </div>
+      </div>
+      <div class="text-right font-mono">
+        <span class="text-amber-400 font-black">${p.pts} PTS</span>
+        <div class="text-[10px] text-slate-400">Shots: ${p.shotsRemaining} | F: <span class="${p.fouls >= 5 ? 'text-rose-400 font-bold' : ''}">${p.fouls}</span></div>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+
+  // Action buttons active state
+  const btnGrid = document.getElementById('actionBtnGrid');
+  if (!isMyTurn()) {
+    btnGrid.classList.add('opacity-40', 'pointer-events-none');
+    document.getElementById('actionConsoleTitle').textContent = "Waiting for Opponent to Play...";
+  } else {
+    btnGrid.classList.remove('opacity-40', 'pointer-events-none');
+    document.getElementById('actionConsoleTitle').textContent = "Your Turn — Choose Action:";
+  }
+}
+
+function executeOffensePlay(playCall) {
+  if (!isMyTurn()) return;
+
+  if (gameState.secondsLeft <= 0) {
+    if (gameState.quarter < 4) {
+      gameState.quarter++;
+      gameState.secondsLeft = 720;
+      gameState.homeFouls = 0;
+      gameState.awayFouls = 0;
+      const qMsg = `<strong class="text-amber-400">--- END OF QUARTER. BEGINNING Q${gameState.quarter} ---</strong>`;
+      logMessage(qMsg);
+      broadcastSync(qMsg);
+    } else {
+      const finalMsg = `<strong class="text-rose-400">FINAL BUZZER! GAME OVER.</strong>`;
+      logMessage(finalMsg);
+      broadcastSync(finalMsg);
+      return;
+    }
+  }
+
+  // Possession clock (14-24s)
+  const elapsed = Math.floor(Math.random() * 10) + 14;
+  gameState.secondsLeft = Math.max(0, gameState.secondsLeft - elapsed);
+
+  const isP1 = gameState.possession === 'away';
+  const offTeam = isP1 ? currentMatchup.away : currentMatchup.home;
+  const defTeam = isP1 ? currentMatchup.home : currentMatchup.away;
+
+  let shooter;
+  let isThree = false;
+
+  if (playCall === 'corner_3') {
+    shooter = offTeam.active.filter(p => p.tpNum > 0).sort((a,b) => b.tpVol - a.tpVol)[0] || offTeam.active[0];
+    isThree = true;
+  } else if (playCall === 'drive') {
+    shooter = offTeam.active.filter(p => p.pos.includes('G') || p.pos.includes('F'))[0];
+    isThree = false;
+  } else {
+    // Pick and pop 3
+    const big = offTeam.active.find(p => p.pos.includes('C') || p.pos.includes('F'));
+    if (big && big.tpNum > 0) {
+      shooter = big;
+      isThree = true;
+    } else {
+      shooter = offTeam.active[Math.floor(Math.random() * offTeam.active.length)];
+      isThree = false;
+    }
+  }
+
+  const defender = defTeam.active[Math.floor(Math.random() * defTeam.active.length)];
+  let threshold = isThree ? shooter.tpNum : shooter.fgNum;
+  threshold += (defender.defMod * 2);
+
+  const shotRoll = rollD88();
+  if (shooter.shotsRemaining > 0) shooter.shotsRemaining--;
+
+  let logResult = "";
+
+  if (shotRoll <= threshold) {
+    const pts = isThree ? 3 : 2;
+    shooter.pts += pts;
+    if (isP1) gameState.awayScore += pts;
+    else gameState.homeScore += pts;
+
+    logResult = `🎯 <strong>${shooter.name}</strong> hits ${pts}PT (${playCall.toUpperCase()})! (Roll: ${shotRoll} vs ${threshold}) <span class="text-slate-500">[vs ${defender.name}]</span>`;
+    gameState.possession = isP1 ? 'home' : 'away';
+  } else {
+    // Rebound
+    const rebRoll = rollD88();
+    const offReb = offTeam.active.reduce((m, p) => p.rebound > m.rebound ? p : m, offTeam.active[0]);
+    const defReb = defTeam.active.reduce((m, p) => p.rebound > m.rebound ? p : m, defTeam.active[0]);
+
+    if (rebRoll <= 55) {
+      logResult = `❌ ${shooter.name} missed. Defensive rebound by <strong>${defReb.name}</strong>.`;
+      gameState.possession = isP1 ? 'home' : 'away';
+    } else {
+      logResult = `⚡ ${shooter.name} missed, but <strong>${offReb.name}</strong> grabs offensive board!`;
+      // Retains possession
+    }
+  }
+
+  logMessage(logResult);
+  updateUI();
+  broadcastSync(logResult);
+}
+
+// ================= SUBS =================
+function openSubModal(side) {
+  // Only allow subbing your own team in online mode
+  if (netRole === 'host' && side !== 'away') return;
+  if (netRole === 'client' && side !== 'home') return;
+
+  subState.teamSide = side;
+  subState.selectedCourtIndex = 0;
+  const teamObj = side === 'home' ? currentMatchup.home : currentMatchup.away;
+  document.getElementById('subModalTitle').textContent = `${teamObj.coachName.toUpperCase()} (${teamObj.teamName}) SUBS`;
+  renderSubLists();
+  document.getElementById('subModal').classList.remove('hidden');
+}
+
+function closeSubModal() {
+  document.getElementById('subModal').classList.add('hidden');
+  updateUI();
+  broadcastSync();
+}
+
+function renderSubLists() {
+  const teamObj = subState.teamSide === 'home' ? currentMatchup.home : currentMatchup.away;
+  const courtDiv = document.getElementById('subCourtList');
+  const benchDiv = document.getElementById('subBenchList');
+
+  courtDiv.innerHTML = "";
+  benchDiv.innerHTML = "";
+
+  teamObj.active.forEach((p, idx) => {
+    const isSelected = (idx === subState.selectedCourtIndex);
+    const btn = document.createElement('button');
+    btn.className = `w-full text-left p-2 rounded-lg text-xs flex justify-between items-center border transition ${
+      isSelected ? 'bg-amber-950/70 border-amber-500 text-amber-200' : 'bg-slate-800 border-slate-700 text-slate-300'
+    }`;
+    btn.onclick = () => { subState.selectedCourtIndex = idx; renderSubLists(); };
+    btn.innerHTML = `
+      <div>
+        <span class="font-bold">${p.name}</span> (${p.pos})
+        <div class="text-[10px] text-slate-400">FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum : 'None'}</div>
+      </div>
+      <div class="text-right">
+        <span class="text-amber-400 font-bold">${p.pts}P</span> | F: ${p.fouls}
+      </div>
+    `;
+    courtDiv.appendChild(btn);
+  });
+
+  if (teamObj.bench.length === 0) {
+    benchDiv.innerHTML = `<div class="text-[11px] text-slate-500 italic p-2">No bench players available.</div>`;
+    return;
+  }
+
+  teamObj.bench.forEach((p, bIdx) => {
+    const btn = document.createElement('button');
+    btn.className = "w-full text-left p-2 rounded-lg text-xs flex justify-between items-center bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300";
+    btn.onclick = () => executeSub(bIdx);
+    btn.innerHTML = `
+      <div>
+        <span class="font-bold text-white">${p.name}</span> (${p.pos})
+        <div class="text-[10px] text-slate-400">FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum : 'None'}</div>
+      </div>
+      <span class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2 py-1 rounded text-[10px] uppercase">
+        Sub In ➔
+      </span>
+    `;
+    benchDiv.appendChild(btn);
+  });
+}
+
+function executeSub(benchIndex) {
+  const teamObj = subState.teamSide === 'home' ? currentMatchup.home : currentMatchup.away;
+  const outgoing = teamObj.active[subState.selectedCourtIndex];
+  const incoming = teamObj.bench[benchIndex];
+
+  teamObj.active[subState.selectedCourtIndex] = incoming;
+  teamObj.bench[benchIndex] = outgoing;
+
+  const msg = `🔄 <strong>${teamObj.teamName}</strong> SUB: ${incoming.name} in for ${outgoing.name}.`;
+  logMessage(msg);
+  renderSubLists();
+  updateUI();
+  broadcastSync(msg);
+}
+
+// Modal controls
+function openLobbyModal() { document.getElementById('lobbyModal').classList.remove('hidden'); }
+function closeLobbyModal() { document.getElementById('lobbyModal').classList.add('hidden'); }
+
+// Init default game
+initMatchup("Spazz Hands", "Hollywood Flakers");
+updateUI();
+</script>
+</body>
+</html>
