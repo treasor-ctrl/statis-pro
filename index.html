@@ -2,183 +2,271 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Statis Pro 2026 - Phone-to-Phone Online</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Statis Pro 2026 - Tom vs Rivers P2P</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   * { -webkit-tap-highlight-color: transparent; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b1120; color: #f8fafc; }
-  .modal-bg { background-color: rgba(11, 17, 32, 0.92); backdrop-filter: blur(6px); }
-  .active-pulse { animation: pulse 1.8s infinite; }
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  html, body { height: 100%; overflow: hidden; background: #070d19; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .modal-bg { background-color: rgba(7, 13, 25, 0.94); backdrop-filter: blur(8px); }
+  .active-pulse { animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 </style>
 </head>
-<body class="p-2 sm:p-4 max-w-md mx-auto min-h-screen flex flex-col justify-between select-none">
+<body class="p-2 max-w-md mx-auto h-screen flex flex-col justify-between select-none">
 
-  <!-- TOP BAR: CONNECTION & SCOREBOARD -->
-  <header class="bg-slate-900 border-2 border-slate-700 rounded-xl p-3 mb-2 shadow-2xl">
-    <div class="flex justify-between items-center text-xs text-slate-400 font-mono mb-2">
+  <!-- 1. SLIM SCOREBOARD (TOM VS RIVERS) -->
+  <header class="bg-slate-900 border border-slate-700/80 rounded-xl p-2 shadow-lg flex-shrink-0">
+    <div class="flex justify-between items-center text-[11px] text-slate-400 font-mono mb-1">
       <div class="flex items-center gap-1.5">
-        <span id="quarterDisplay" class="bg-slate-800 px-2 py-0.5 rounded font-black text-amber-300">Q1</span>
-        <span id="clockDisplay" class="text-amber-400 font-black text-sm">12:00</span>
+        <span id="quarterDisplay" class="bg-slate-800 px-1.5 py-0.2 rounded font-black text-amber-300">Q1</span>
+        <span id="clockDisplay" class="text-amber-400 font-bold text-xs">12:00</span>
       </div>
-      <!-- Connection Pill -->
-      <div class="flex items-center gap-2">
-        <button onclick="openLobbyModal()" id="p2pStatusBtn" class="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-0.5 rounded-full font-bold text-slate-300">
-          <span id="connDot" class="w-2 h-2 rounded-full bg-rose-500"></span>
-          <span id="connLabel">Offline (Tap to Connect)</span>
+      <!-- Setup & Connect Buttons -->
+      <div class="flex items-center gap-1.5">
+        <button onclick="openSetupModal()" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-0.5 rounded font-bold text-amber-300">
+          ⚙️ Matchup
+        </button>
+        <button onclick="openLobbyModal()" id="connBadge" class="flex items-center gap-1 text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-600 px-2 py-0.5 rounded-full font-bold text-slate-300">
+          <span id="connDot" class="w-2 h-2 rounded-full bg-amber-500 active-pulse"></span>
+          <span id="connLabel">P2P Connect</span>
         </button>
       </div>
     </div>
-    
-    <!-- SPLIT SCOREBOARD (P1 vs P2) -->
+
+    <!-- Matchup Scores -->
     <div class="grid grid-cols-2 gap-2 text-center items-center">
-      <!-- AWAY TEAM / PLAYER 1 -->
-      <div id="p1Box" class="bg-slate-800/90 p-2 rounded-lg border-2 border-amber-500 transition-all shadow-md">
-        <div class="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-amber-400 mb-0.5">
-          <span id="p1CoachTitle">P1 (AWAY)</span>
-          <span id="p1RoleBadge" class="bg-amber-500 text-slate-950 px-1 rounded text-[8px] font-black">OFFENSE</span>
+      <!-- TOM'S BOX -->
+      <div id="tomBox" class="bg-slate-800/90 p-1.5 rounded-lg border-2 border-amber-500 transition-all shadow-md">
+        <div class="flex justify-between items-center text-[8.5px] font-black uppercase text-amber-400">
+          <span id="tomHeaderTitle">TOM</span>
+          <span id="tomBadge" class="bg-amber-500 text-slate-950 px-1 rounded text-[7.5px] font-black">OFFENSE</span>
         </div>
-        <div id="awayTeamName" class="text-xs font-black text-white truncate">HOLLYWOOD FLAKERS</div>
-        <div id="awayScore" class="text-2xl font-black font-mono text-white my-0.5">0</div>
-        <div class="flex justify-between text-[9px] text-slate-400 px-1 font-mono">
-          <span id="awayFouls">Fouls: 0</span>
-          <button onclick="openSubModal('away')" id="awaySubBtn" class="text-amber-400 hover:underline font-bold">Subs ➔</button>
+        <div id="tomTeamName" class="text-[11px] font-black text-white truncate my-0.5">SPAZZ HANDS</div>
+        <div id="tomScore" class="text-2xl font-black font-mono text-white leading-none">0</div>
+        <div class="flex justify-between text-[8.5px] text-slate-400 font-mono mt-0.5">
+          <span id="tomFouls">Fouls: 0</span>
+          <button onclick="openSubModal('tom')" class="text-amber-400 font-bold hover:underline">Subs ➔</button>
         </div>
       </div>
 
-      <!-- HOME TEAM / PLAYER 2 -->
-      <div id="p2Box" class="bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80">
-        <div class="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-sky-400 mb-0.5">
-          <span id="p2CoachTitle">P2 (HOME)</span>
-          <span id="p2RoleBadge" class="bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black">DEFENSE</span>
+      <!-- RIVERS'S BOX -->
+      <div id="riversBox" class="bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/80 transition-all opacity-80">
+        <div class="flex justify-between items-center text-[8.5px] font-black uppercase text-sky-400">
+          <span id="riversHeaderTitle">RIVERS (SIMMONS)</span>
+          <span id="riversBadge" class="bg-slate-700 text-slate-300 px-1 rounded text-[7.5px] font-black">DEFENSE</span>
         </div>
-        <div id="homeTeamName" class="text-xs font-black text-white truncate">SPAZZ HANDS</div>
-        <div id="homeScore" class="text-2xl font-black font-mono text-white my-0.5">0</div>
-        <div class="flex justify-between text-[9px] text-slate-400 px-1 font-mono">
-          <span id="homeFouls">Fouls: 0</span>
-          <button onclick="openSubModal('home')" id="homeSubBtn" class="text-sky-400 hover:underline font-bold">Subs ➔</button>
+        <div id="riversTeamName" class="text-[11px] font-black text-white truncate my-0.5">BURGER KINGS</div>
+        <div id="riversScore" class="text-2xl font-black font-mono text-white leading-none">0</div>
+        <div class="flex justify-between text-[8.5px] text-slate-400 font-mono mt-0.5">
+          <span id="riversFouls">Fouls: 0</span>
+          <button onclick="openSubModal('rivers')" class="text-sky-400 font-bold hover:underline">Subs ➔</button>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- ON-COURT FLOOR & COACH CONTROLLER -->
-  <main class="flex-grow flex flex-col gap-2">
-    <!-- Live Turn Guidance Banner -->
-    <div id="turnBanner" class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-2 text-xs flex justify-between items-center shadow-sm">
-      <div class="flex items-center gap-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 active-pulse"></span>
-        <span id="turnBannerText" class="font-bold text-amber-300">P1's Possession: Call Offensive Play</span>
+  <!-- 2. ON-COURT FLOOR (Compact Rows, Zero Scrolling) -->
+  <main class="flex-grow flex flex-col justify-between py-1 gap-1 min-h-0 overflow-hidden">
+    <!-- Turn Guidance Bar -->
+    <div id="turnBar" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 flex justify-between items-center text-[10.5px]">
+      <div class="flex items-center gap-1.5 truncate">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 active-pulse"></span>
+        <span id="turnStatusText" class="font-bold text-slate-200 truncate">Tom's Possession: Pass or Shoot</span>
       </div>
-      <span id="myRoleTag" class="text-[9px] bg-slate-800 px-2 py-0.5 rounded text-slate-300 font-mono">Host Screen</span>
+      <button onclick="openSubModal(gameState.possession)" class="text-[9.5px] bg-slate-800 border border-slate-600 px-1.5 py-0.2 rounded font-bold text-amber-300">
+        🔄 Subs
+      </button>
     </div>
 
-    <!-- Active 5 Cards on Floor -->
-    <div id="lineupContainer" class="grid grid-cols-1 gap-1.5 overflow-y-auto max-h-[35vh]">
-      <!-- Populated dynamically -->
+    <!-- 5 Lineup Bars -->
+    <div id="lineupContainer" class="flex flex-col gap-1 flex-shrink-0">
+      <!-- Injected by JavaScript -->
     </div>
 
-    <!-- PLAY-BY-PLAY FEED -->
-    <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 text-[11px] font-mono h-24 overflow-y-auto flex flex-col-reverse text-slate-300 shadow-inner" id="playLog">
-      <div class="text-slate-500 italic">Connected to 2026 Engine. Tap an action below to start!</div>
+    <!-- Play Log Ticker -->
+    <div id="playLog" class="bg-slate-950 border border-slate-800/80 rounded-lg p-1.5 text-[10px] font-mono h-14 overflow-y-auto flex flex-col-reverse text-slate-300 shadow-inner">
+      <div class="text-slate-500 italic">Connected. Ready for action!</div>
     </div>
   </main>
 
-  <!-- INTERACTIVE PLAYCALLING CONSOLE -->
-  <footer class="mt-2 bg-slate-900 border-t-2 border-slate-800 p-2.5 rounded-t-xl shadow-2xl">
-    <div id="actionArea">
-      <!-- Dynamic: Offense selects play, or Defense selects scheme -->
-      <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
-        <span id="actionConsoleTitle">Offensive Playcall</span>
-        <span class="text-slate-500">Statis Pro D88 Modern Rules</span>
-      </div>
-      <div id="actionBtnGrid" class="grid grid-cols-3 gap-2">
-        <button onclick="executeOffensePlay('pick_pop')" class="bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
-          Pick & Pop 3
-        </button>
-        <button onclick="executeOffensePlay('corner_3')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
-          Corner Kick 3
-        </button>
-        <button onclick="executeOffensePlay('drive')" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-bold py-2.5 px-1 rounded-lg text-xs uppercase tracking-wider shadow">
-          Drive / Paint
-        </button>
-      </div>
+  <!-- 3. ACTION CONTROLS (ALWAYS VISIBLE AT BOTTOM) -->
+  <footer class="bg-slate-900 border-t border-slate-800 p-2 rounded-t-xl flex-shrink-0">
+    <div class="flex justify-between items-center text-[9px] font-mono text-slate-400 mb-1">
+      <span id="ballHolderTag" class="text-amber-300 font-bold">🏀 Ball with: Keyonte George</span>
+      <span id="consoleRoleTag">Statis Pro 2026</span>
+    </div>
+
+    <!-- 4 TACTICAL ACTION BUTTONS -->
+    <div id="actionBtnGrid" class="grid grid-cols-4 gap-1.5">
+      <button onclick="openPassTargetModal()" class="bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-black py-2.5 px-0.5 rounded-lg text-[11px] uppercase tracking-wider shadow">
+        🏀 Pass
+      </button>
+      <button onclick="executeAction('three')" class="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black py-2.5 px-0.5 rounded-lg text-[11px] uppercase tracking-wider shadow">
+        3-Pointer
+      </button>
+      <button onclick="executeAction('pick_pop')" class="bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-black py-2.5 px-0.5 rounded-lg text-[11px] uppercase tracking-wider shadow">
+        Pick & Pop
+      </button>
+      <button onclick="executeAction('drive')" class="bg-purple-600 hover:bg-purple-500 active:scale-95 text-white font-black py-2.5 px-0.5 rounded-lg text-[11px] uppercase tracking-wider shadow">
+        Drive Inside
+      </button>
     </div>
   </footer>
 
-  <!-- ================= LOBBY & ONLINE ROOM MODAL ================= -->
-  <div id="lobbyModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border-2 border-slate-700 rounded-2xl max-w-sm w-full p-5 flex flex-col gap-4 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-        <h3 class="text-sm font-black text-white">PLAY PHONE-TO-PHONE</h3>
-        <button onclick="closeLobbyModal()" class="text-slate-400 hover:text-white font-bold text-lg">&times;</button>
+  <!-- ================= MODAL 1: LOBBY & STICKY IDENTITY ================= -->
+  <div id="lobbyModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3">
+    <div class="bg-slate-900 border-2 border-slate-700 rounded-2xl max-w-sm w-full p-4 flex flex-col gap-3 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-1.5">
+        <h3 class="text-xs font-black text-white uppercase tracking-wider">ROOM CONNECTION</h3>
+        <button onclick="closeLobbyModal()" class="text-slate-400 hover:text-white font-bold">&times;</button>
       </div>
 
-      <!-- Mode 1: Host a Game -->
-      <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-        <div class="text-[10px] font-bold text-amber-400 uppercase tracking-wider mb-1">OPTION 1: HOST GAME (Phone 1)</div>
-        <p class="text-[11px] text-slate-400 mb-2">Tap below to get a 4-digit Room Code for your son:</p>
-        <button onclick="startHosting()" id="btnHost" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow">
-          Generate Room Code
-        </button>
-        <div id="hostCodeBox" class="mt-2 text-center p-2 bg-slate-950 rounded border border-amber-500/50 hidden">
-          <div class="text-[9px] text-slate-400 uppercase font-mono">Your Son Enters This Code:</div>
-          <div id="myRoomCode" class="text-2xl font-black font-mono tracking-widest text-amber-300">----</div>
-          <div class="text-[10px] text-slate-500 animate-pulse mt-1">Waiting for Phone 2 to connect...</div>
+      <!-- STEP 1: STICKY IDENTITY SELECTION -->
+      <div class="bg-slate-800/90 p-2.5 rounded-xl border border-slate-700">
+        <div class="text-[9.5px] font-black uppercase text-amber-300 mb-1.5 tracking-wider">
+          1. WHO ARE YOU ON THIS PHONE? (SAVED):
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 p-2 bg-slate-900 rounded-lg border border-slate-700 cursor-pointer hover:border-amber-500 transition">
+            <input type="radio" name="myIdentity" value="tom" onchange="saveStickyIdentity('tom')" class="accent-amber-500 w-4 h-4">
+            <div>
+              <div class="font-black text-amber-400">Tom</div>
+              <div class="text-[8px] text-slate-400 font-mono">Host / Coach</div>
+            </div>
+          </label>
+          <label class="flex items-center gap-2 p-2 bg-slate-900 rounded-lg border border-slate-700 cursor-pointer hover:border-sky-500 transition">
+            <input type="radio" name="myIdentity" value="rivers" onchange="saveStickyIdentity('rivers')" class="accent-sky-500 w-4 h-4">
+            <div>
+              <div class="font-black text-sky-400">Rivers</div>
+              <div class="text-[8px] text-slate-400 font-mono">+ Ben Simmons</div>
+            </div>
+          </label>
         </div>
       </div>
 
-      <!-- Mode 2: Join a Game -->
-      <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700">
-        <div class="text-[10px] font-bold text-sky-400 uppercase tracking-wider mb-1">OPTION 2: JOIN GAME (Phone 2)</div>
-        <p class="text-[11px] text-slate-400 mb-2">Enter the 4-digit code shown on Phone 1:</p>
-        <div class="flex gap-2">
-          <input id="inputJoinCode" type="text" placeholder="e.g. 7412" maxlength="6" class="flex-grow bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-center font-mono font-bold text-white text-base uppercase focus:border-sky-500 outline-none">
-          <button onclick="joinRoom()" class="bg-sky-500 hover:bg-sky-400 text-slate-950 font-black px-4 py-2 rounded-lg text-xs uppercase tracking-wider shadow">
-            Connect
+      <!-- Feedback Banner -->
+      <div id="p2pFeedbackBox" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-center text-xs">
+        <span id="p2pFeedbackText" class="text-slate-300 font-bold">Generate a room code or submit code below</span>
+      </div>
+
+      <!-- STEP 2: GENERATE CODE (HOST) -->
+      <div class="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700">
+        <div class="text-[9px] font-bold text-amber-400 uppercase tracking-wider mb-1">OPTION A: GENERATE CODE</div>
+        <button id="btnCreateRoom" onclick="startHostingRoom()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2 rounded-lg text-xs uppercase tracking-wider shadow">
+          Generate Room Code
+        </button>
+        <div id="hostRoomDisplay" class="mt-2 text-center p-2 bg-slate-950 rounded border border-amber-500/50 hidden">
+          <div class="text-[9px] text-slate-400 uppercase">Share This 4-Digit Code:</div>
+          <div id="generatedRoomCode" class="text-2xl font-black font-mono text-amber-300 tracking-widest my-0.5">----</div>
+          <div class="text-[8.5px] text-slate-400">The other phone types this code under "Submit Code".</div>
+        </div>
+      </div>
+
+      <!-- STEP 3: SUBMIT CODE (JOIN) -->
+      <div class="bg-slate-800/70 p-2.5 rounded-xl border border-slate-700">
+        <div class="text-[9px] font-bold text-sky-400 uppercase tracking-wider mb-1">OPTION B: SUBMIT CODE</div>
+        <div class="flex gap-1.5">
+          <input id="inputPin" type="text" placeholder="PIN" maxlength="4" class="w-24 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-center font-mono font-black text-white text-base outline-none focus:border-sky-500">
+          <button id="btnJoinRoom" onclick="joinHostingRoom()" class="flex-grow bg-sky-500 hover:bg-sky-400 text-slate-950 font-black py-1.5 rounded-lg text-xs uppercase tracking-wider shadow">
+            Submit Code
           </button>
         </div>
       </div>
 
-      <!-- Pass & Play Fallback -->
       <div class="text-center pt-1 border-t border-slate-800">
-        <button onclick="closeLobbyModal()" class="text-xs text-slate-400 hover:text-white underline">
-          Or play offline on this phone (Pass & Play)
+        <button onclick="closeLobbyModal()" class="text-[11px] text-slate-400 hover:text-white underline font-bold">
+          Play Offline (Pass & Play on One Device)
         </button>
       </div>
     </div>
   </div>
 
-  <!-- ================= SUBSTITUTION MODAL ================= -->
-  <div id="subModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3 hidden">
-    <div class="bg-slate-900 border-2 border-slate-700 rounded-xl max-w-sm w-full max-h-[85vh] flex flex-col shadow-2xl">
-      <div class="p-3 border-b border-slate-800 flex justify-between items-center">
-        <div>
-          <h3 id="subModalTitle" class="text-sm font-black text-white">SUBSTITUTIONS</h3>
-          <p class="text-[10px] text-slate-400">Select active player to bench, then tap replacement.</p>
-        </div>
-        <button onclick="closeSubModal()" class="text-slate-400 hover:text-white text-lg font-bold px-2">&times;</button>
+  <!-- ================= MODAL 2: NEW GAME SETUP ================= -->
+  <div id="setupModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border-2 border-slate-700 rounded-2xl max-w-sm w-full p-4 flex flex-col gap-3 shadow-2xl">
+      <div class="border-b border-slate-800 pb-2">
+        <h3 class="text-sm font-black text-white uppercase tracking-wider">🏀 STATIS PRO: MATCHUP SETUP</h3>
+        <p class="text-[10px] text-slate-400">Configure teams and opening possession.</p>
       </div>
-      <div class="p-3 overflow-y-auto flex-grow flex flex-col gap-3">
+
+      <!-- Who Starts (Radio Buttons) -->
+      <div class="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700">
+        <label class="block text-[10px] font-black uppercase text-amber-300 mb-1.5">WHO STARTS WITH BALL (TIP-OFF):</label>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 p-2 bg-slate-900/90 rounded-lg border border-slate-700 cursor-pointer hover:border-amber-500">
+            <input type="radio" name="startPossession" value="tom" checked class="accent-amber-500 w-4 h-4">
+            <span class="font-black text-amber-400">Tom</span>
+          </label>
+          <label class="flex items-center gap-2 p-2 bg-slate-900/90 rounded-lg border border-slate-700 cursor-pointer hover:border-sky-500">
+            <input type="radio" name="startPossession" value="rivers" class="accent-sky-500 w-4 h-4">
+            <span class="font-black text-sky-400">Rivers</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Tom's Team Select -->
+      <div>
+        <label class="block text-[10px] font-black uppercase text-amber-400 mb-1">Tom's Team:</label>
+        <select id="selectTomTeam" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white outline-none focus:border-amber-500"></select>
+      </div>
+
+      <!-- Rivers's Team Select -->
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="block text-[10px] font-black uppercase text-sky-400">Rivers's Team:</label>
+          <span class="text-[9px] text-emerald-400 font-bold bg-emerald-950/80 px-1.5 py-0.2 rounded border border-emerald-500/40">★ Ben Simmons Included</span>
+        </div>
+        <select id="selectRiversTeam" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white outline-none focus:border-sky-500"></select>
+      </div>
+
+      <div class="flex gap-2 pt-1 border-t border-slate-800">
+        <button onclick="confirmGameSetup()" class="flex-grow bg-blue-600 hover:bg-blue-500 active:scale-95 text-white font-black py-2.5 rounded-lg text-xs uppercase tracking-wider shadow-lg">
+          Tip-Off Game ➔
+        </button>
+        <button onclick="closeSetupModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold px-3 rounded-lg text-xs">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 3: PASS TARGET ================= -->
+  <div id="passModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border-2 border-sky-500 rounded-2xl max-w-xs w-full p-3 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2">
+        <h3 class="text-xs font-black text-white uppercase">🏀 PASS TO TEAMMATE:</h3>
+        <button onclick="closePassTargetModal()" class="text-slate-400 hover:text-white font-bold px-1">&times;</button>
+      </div>
+      <div id="passTargetList" class="flex flex-col gap-1 max-h-56 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 4: SUBS ================= -->
+  <div id="subModal" class="fixed inset-0 modal-bg z-50 flex items-center justify-center p-3 hidden">
+    <div class="bg-slate-900 border-2 border-slate-700 rounded-2xl max-w-sm w-full p-3 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-1.5 mb-2">
+        <h3 id="subModalTitle" class="text-xs font-black text-white uppercase">SUBSTITUTIONS</h3>
+        <button onclick="closeSubModal()" class="text-slate-400 hover:text-white font-bold">&times;</button>
+      </div>
+      <div class="overflow-y-auto flex-grow flex flex-col gap-2">
         <div>
-          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">On Court:</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Active Player to Bench:</div>
           <div id="subCourtList" class="flex flex-col gap-1"></div>
         </div>
         <div>
-          <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Available Bench:</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bench Player to Insert:</div>
           <div id="subBenchList" class="flex flex-col gap-1"></div>
         </div>
       </div>
-      <div class="p-2 border-t border-slate-800 text-center">
-        <button onclick="closeSubModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-1.5 rounded text-xs">Done</button>
+      <div class="pt-2 border-t border-slate-800 text-center">
+        <button onclick="closeSubModal()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-1.5 rounded text-xs">Done</button>
       </div>
     </div>
   </div>
 
 <script>
-
 const ALL_PLAYERS = [
   {
     "name": "Keyonte George",
@@ -4484,7 +4572,6 @@ const ALL_PLAYERS = [
   }
 ];
 
-// Build team lookup table
 const TEAM_ROSTERS = {};
 ALL_PLAYERS.forEach(p => {
   if (!TEAM_ROSTERS[p.team]) TEAM_ROSTERS[p.team] = [];
@@ -4502,49 +4589,152 @@ ALL_PLAYERS.forEach(p => {
     defMod: defMatch ? (defMatch[1] === "Minus" ? -parseInt(defMatch[2]) : parseInt(defMatch[2])) : 0,
     fouls: 0,
     pts: 0,
+    assistsCount: 0,
     shotsRemaining: p.shots
   });
 });
 
+const BEN_SIMMONS_CARD = {
+  name: "Ben Simmons",
+  team: "Burger Kings",
+  pos: "Guard / Forward",
+  def_rate: "Minus 4",
+  foul_range: "51-55",
+  rebound: 19,
+  free_throw: "11-45",
+  field_goal: "11-58",
+  three_pointer: "None",
+  secondary: "11-38",
+  shots: 8,
+  steal: "S4",
+  block: "B3",
+  assist: 8,
+  foul_drawing: 14,
+  injury: 1,
+  fgNum: 58,
+  tpNum: 0,
+  tpVol: 0,
+  ftNum: 45,
+  defMod: -4,
+  fouls: 0,
+  pts: 0,
+  assistsCount: 0,
+  shotsRemaining: 8
+};
+
+// Sticky user identity ('tom' or 'rivers')
+let myIdentity = localStorage.getItem('statis_player_name') || 'tom';
 let netRole = 'solo'; // 'host', 'client', or 'solo'
 let peer = null;
 let conn = null;
 
-let homeTeamKey = "Spazz Hands";
-let awayTeamKey = "Hollywood Flakers";
-
 let currentMatchup = {
-  home: { teamName: homeTeamKey, coachName: "Player 2", active: [], bench: [] },
-  away: { teamName: awayTeamKey, coachName: "Player 1", active: [], bench: [] }
+  tom: { teamName: "Spazz Hands", coachName: "Tom", active: [], bench: [] },
+  rivers: { teamName: "Burger Kings", coachName: "Rivers", active: [], bench: [] }
 };
 
 let gameState = {
   quarter: 1,
   secondsLeft: 720,
-  possession: 'away', // 'away' = Player 1, 'home' = Player 2
-  homeScore: 0,
-  awayScore: 0,
-  homeFouls: 0,
-  awayFouls: 0
+  possession: 'tom',
+  tomScore: 0,
+  riversScore: 0,
+  tomFouls: 0,
+  riversFouls: 0,
+  ballHandlerIndex: 0,
+  lastPasserIndex: null
 };
 
-let subState = {
-  teamSide: 'away',
-  selectedCourtIndex: 0
-};
+let subState = { teamSide: 'tom', selectedCourtIndex: 0 };
 
-function initMatchup(hKey, aKey) {
-  homeTeamKey = hKey;
-  awayTeamKey = aKey;
+function saveStickyIdentity(id) {
+  myIdentity = id;
+  localStorage.setItem('statis_player_name', id);
+  setFeedback(`Saved identity as ${id === 'tom' ? 'Tom' : 'Rivers'}.`, "text-amber-300");
+  updateUI();
+}
 
-  const hPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[hKey] || []));
-  const aPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[aKey] || []));
+function loadStickyIdentityUI() {
+  const radios = document.getElementsByName('myIdentity');
+  radios.forEach(r => {
+    r.checked = (r.value === myIdentity);
+  });
+}
 
-  currentMatchup.home = { teamName: hKey, coachName: "Player 2", active: hPool.slice(0, 5), bench: hPool.slice(5) };
-  currentMatchup.away = { teamName: aKey, coachName: "Player 1", active: aPool.slice(0, 5), bench: aPool.slice(5) };
+function populateTeamDropdowns() {
+  const selTom = document.getElementById('selectTomTeam');
+  const selRiv = document.getElementById('selectRiversTeam');
+  selTom.innerHTML = "";
+  selRiv.innerHTML = "";
 
-  document.getElementById('homeTeamName').textContent = hKey.toUpperCase();
-  document.getElementById('awayTeamName').textContent = aKey.toUpperCase();
+  const teams = Object.keys(TEAM_ROSTERS).sort();
+  teams.forEach(t => {
+    selTom.add(new Option(t, t, false, t === "Spazz Hands"));
+    selRiv.add(new Option(t, t, false, t === "Burger Kings"));
+  });
+}
+
+function confirmGameSetup() {
+  const tomTeam = document.getElementById('selectTomTeam').value;
+  const riversTeam = document.getElementById('selectRiversTeam').value;
+  const whoStarts = document.querySelector('input[name="startPossession"]:checked').value;
+
+  initCustomMatchup(tomTeam, riversTeam, whoStarts);
+  closeSetupModal();
+
+  const startMsg = `🏀 Game Started! ${whoStarts === 'tom' ? 'Tom' : 'Rivers'} won opening tip-off.`;
+  logMessage(`<strong class="text-amber-400">${startMsg}</strong>`);
+  broadcastSync(startMsg);
+}
+
+function initCustomMatchup(tomTeamKey, riversTeamKey, startingCoach = 'tom') {
+  const tomPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[tomTeamKey] || []));
+  const riversPool = JSON.parse(JSON.stringify(TEAM_ROSTERS[riversTeamKey] || []));
+
+  // RULE: Rivers will ALWAYS have Ben Simmons on his team!
+  const hasSimmons = riversPool.some(p => p.name.includes("Simmons"));
+  if (!hasSimmons) {
+    const simmonsCopy = JSON.parse(JSON.stringify(BEN_SIMMONS_CARD));
+    simmonsCopy.team = riversTeamKey;
+    riversPool.unshift(simmonsCopy);
+  } else {
+    const simIdx = riversPool.findIndex(p => p.name.includes("Simmons"));
+    if (simIdx > 4) {
+      const simCard = riversPool.splice(simIdx, 1)[0];
+      riversPool.splice(2, 0, simCard);
+    }
+  }
+
+  currentMatchup.tom = {
+    teamName: tomTeamKey,
+    coachName: "Tom",
+    active: tomPool.slice(0, 5),
+    bench: tomPool.slice(5)
+  };
+
+  currentMatchup.rivers = {
+    teamName: riversTeamKey,
+    coachName: "Rivers",
+    active: riversPool.slice(0, 5),
+    bench: riversPool.slice(5)
+  };
+
+  gameState = {
+    quarter: 1,
+    secondsLeft: 720,
+    possession: startingCoach,
+    tomScore: 0,
+    riversScore: 0,
+    tomFouls: 0,
+    riversFouls: 0,
+    ballHandlerIndex: 0,
+    lastPasserIndex: null
+  };
+
+  document.getElementById('tomTeamName').textContent = tomTeamKey.toUpperCase();
+  document.getElementById('riversTeamName').textContent = riversTeamKey.toUpperCase();
+
+  updateUI();
 }
 
 function rollD88() {
@@ -4556,68 +4746,95 @@ function rollD88() {
 function logMessage(msg) {
   const log = document.getElementById('playLog');
   const entry = document.createElement('div');
-  entry.className = "py-0.5 border-b border-slate-800/80";
+  entry.className = "py-0.2 border-b border-slate-800/80 leading-tight";
   entry.innerHTML = msg;
   log.prepend(entry);
 }
 
-// ================= WEBRTC PEERJS MULTIPLAYER =================
-function startHosting() {
+// ================= WEBRTC PEERJS (WITH STICKY IDENTITY) =================
+function startHostingRoom() {
   netRole = 'host';
-  const shortCode = Math.floor(1000 + Math.random() * 9000).toString();
-  const fullPeerId = `statis-2026-${shortCode}`;
+  const pin = Math.floor(1000 + Math.random() * 9000).toString();
+  const peerId = `statis26-${pin}`;
+  setFeedback("🟡 Creating room on network...", "text-amber-400");
 
-  peer = new Peer(fullPeerId);
+  peer = new Peer(peerId, {
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
+      ]
+    }
+  });
 
   peer.on('open', (id) => {
-    document.getElementById('myRoomCode').textContent = shortCode;
-    document.getElementById('hostCodeBox').classList.remove('hidden');
-    document.getElementById('btnHost').classList.add('hidden');
+    document.getElementById('generatedRoomCode').textContent = pin;
+    document.getElementById('hostRoomDisplay').classList.remove('hidden');
+    document.getElementById('btnCreateRoom').classList.add('hidden');
+    setFeedback(`🟢 Code ${pin} ready! Waiting for connection...`, "text-emerald-400");
   });
 
   peer.on('connection', (c) => {
     conn = c;
-    setupConnectionHandlers();
-    onNetworkConnected("Connected with Son (Player 2)!");
-    // Sync initial state to client
-    broadcastSync();
+    setupConnEvents();
+    // Handshake identity
+    conn.on('open', () => {
+      conn.send({ type: 'HANDSHAKE', identity: myIdentity });
+    });
+    onConnectedSuccess(`Connected! (You: ${myIdentity === 'tom' ? 'Tom' : 'Rivers'})`);
+    broadcastSync(`🏀 Room connected! ${myIdentity === 'tom' ? 'Tom' : 'Rivers'} hosted.`);
   });
 
   peer.on('error', (err) => {
-    console.error("PeerJS error:", err);
-    alert("Connection error. Try clicking generate again.");
+    setFeedback("🔴 Error creating room. Tap to retry.", "text-rose-400");
   });
 }
 
-function joinRoom() {
-  const code = document.getElementById('inputJoinCode').value.trim();
-  if (code.length < 4) {
-    alert("Please enter a valid 4-digit code.");
+function joinHostingRoom() {
+  const pin = document.getElementById('inputPin').value.trim();
+  if (pin.length < 4) {
+    setFeedback("⚠️ Please enter a 4-digit PIN.", "text-amber-300");
     return;
   }
+
   netRole = 'client';
-  const targetId = `statis-2026-${code}`;
-  
-  peer = new Peer();
+  const targetId = `statis26-${pin}`;
+  setFeedback(`🟡 Connecting to Room ${pin}...`, "text-sky-400");
+
+  peer = new Peer(undefined, {
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" }
+      ]
+    }
+  });
+
   peer.on('open', () => {
-    conn = peer.connect(targetId);
-    setupConnectionHandlers();
+    conn = peer.connect(targetId, { reliable: true });
+    setupConnEvents();
   });
 
   peer.on('error', (err) => {
-    console.error(err);
-    alert("Could not connect to that code. Check Phone 1 and try again.");
+    setFeedback("🔴 Failed to connect. Check PIN.", "text-rose-400");
   });
 }
 
-function setupConnectionHandlers() {
+function setupConnEvents() {
   conn.on('open', () => {
-    onNetworkConnected(netRole === 'client' ? "Connected with Dad (Player 1)!" : "Connected with Son (Player 2)!");
-    closeLobbyModal();
+    conn.send({ type: 'HANDSHAKE', identity: myIdentity });
+    onConnectedSuccess(`Connected! (You: ${myIdentity === 'tom' ? 'Tom' : 'Rivers'})`);
   });
 
   conn.on('data', (data) => {
-    if (data.type === 'SYNC') {
+    if (data.type === 'HANDSHAKE') {
+      // Opponent declared identity
+      if (data.identity === myIdentity) {
+        // If both selected same identity by accident, flip the remote or warn
+        console.log("Opponent identity:", data.identity);
+      }
+      updateUI();
+    } else if (data.type === 'SYNC') {
       gameState = data.gameState;
       currentMatchup = data.currentMatchup;
       if (data.msg) logMessage(data.msg);
@@ -4626,123 +4843,195 @@ function setupConnectionHandlers() {
   });
 
   conn.on('close', () => {
-    alert("Opponent disconnected.");
+    setFeedback("⚠️ Opponent disconnected.", "text-rose-400");
     document.getElementById('connDot').className = "w-2 h-2 rounded-full bg-rose-500";
     document.getElementById('connLabel').textContent = "Disconnected";
   });
 }
 
-function onNetworkConnected(label) {
+function onConnectedSuccess(label) {
+  setFeedback(`🎉 ${label}`, "text-emerald-400");
   document.getElementById('connDot').className = "w-2 h-2 rounded-full bg-emerald-400";
-  document.getElementById('connLabel').textContent = "P2P Online";
-  document.getElementById('myRoleTag').textContent = netRole === 'host' ? "You: Player 1 (Away)" : "You: Player 2 (Home)";
-  document.getElementById('p1CoachTitle').textContent = netRole === 'host' ? "YOU (AWAY)" : "DAD (AWAY)";
-  document.getElementById('p2CoachTitle').textContent = netRole === 'client' ? "YOU (HOME)" : "SON (HOME)";
+  document.getElementById('connLabel').textContent = "P2P Connected 🟢";
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
   logMessage(`<strong class="text-emerald-400">⚡ MULTIPLAYER LIVE: ${label}</strong>`);
+  setTimeout(() => {
+    closeLobbyModal();
+    updateUI();
+  }, 1000);
+}
+
+function setFeedback(txt, colorClass) {
+  const box = document.getElementById('p2pFeedbackText');
+  box.textContent = txt;
+  box.className = `${colorClass} font-bold`;
 }
 
 function broadcastSync(msg = "") {
   if (conn && conn.open) {
-    conn.send({
-      type: 'SYNC',
-      gameState,
-      currentMatchup,
-      msg
-    });
+    conn.send({ type: 'SYNC', gameState, currentMatchup, msg });
   }
 }
 
-// ================= GAMEPLAY ENGINE (MODERN NBA STATIS PRO) =================
 function isMyTurn() {
   if (netRole === 'solo') return true;
-  if (netRole === 'host' && gameState.possession === 'away') return true;
-  if (netRole === 'client' && gameState.possession === 'home') return true;
-  return false;
+  return gameState.possession === myIdentity;
 }
 
+// ================= UI UPDATE =================
 function updateUI() {
-  document.getElementById('homeScore').textContent = gameState.homeScore;
-  document.getElementById('awayScore').textContent = gameState.awayScore;
-  document.getElementById('homeFouls').textContent = `Fouls: ${gameState.homeFouls}`;
-  document.getElementById('awayFouls').textContent = `Fouls: ${gameState.awayFouls}`;
+  document.getElementById('tomScore').textContent = gameState.tomScore;
+  document.getElementById('riversScore').textContent = gameState.riversScore;
+  document.getElementById('tomFouls').textContent = `Fouls: ${gameState.tomFouls}`;
+  document.getElementById('riversFouls').textContent = `Fouls: ${gameState.riversFouls}`;
 
   const mins = Math.floor(gameState.secondsLeft / 60);
   const secs = gameState.secondsLeft % 60;
   document.getElementById('clockDisplay').textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   document.getElementById('quarterDisplay').textContent = `Q${gameState.quarter}`;
 
-  const isP1Poss = gameState.possession === 'away';
-  const p1Box = document.getElementById('p1Box');
-  const p2Box = document.getElementById('p2Box');
-  const p1Role = document.getElementById('p1RoleBadge');
-  const p2Role = document.getElementById('p2RoleBadge');
-  const turnBanner = document.getElementById('turnBannerText');
+  const isTom = gameState.possession === 'tom';
+  const tomBox = document.getElementById('tomBox');
+  const riversBox = document.getElementById('riversBox');
+  const tomBadge = document.getElementById('tomBadge');
+  const riversBadge = document.getElementById('riversBadge');
+  const turnText = document.getElementById('turnStatusText');
 
-  if (isP1Poss) {
-    p1Box.className = "bg-slate-800/90 p-2 rounded-lg border-2 border-amber-500 shadow-lg scale-[1.02] transition-all";
-    p2Box.className = "bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80";
-    p1Role.className = "bg-amber-500 text-slate-950 px-1 rounded text-[8px] font-black";
-    p1Role.textContent = "OFFENSE";
-    p2Role.className = "bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black";
-    p2Role.textContent = "DEFENSE";
-    turnBanner.textContent = `P1 (${currentMatchup.away.teamName}): Choose Offensive Play`;
+  // Highlight who is you
+  document.getElementById('tomHeaderTitle').textContent = (myIdentity === 'tom' && netRole !== 'solo') ? "TOM (YOU)" : "TOM";
+  document.getElementById('riversHeaderTitle').textContent = (myIdentity === 'rivers' && netRole !== 'solo') ? "RIVERS (YOU)" : "RIVERS (SIMMONS)";
+
+  if (isTom) {
+    tomBox.className = "bg-slate-800/90 p-1.5 rounded-lg border-2 border-amber-500 shadow-lg scale-[1.01] transition-all";
+    riversBox.className = "bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/80 transition-all opacity-80";
+    tomBadge.className = "bg-amber-500 text-slate-950 px-1 rounded text-[7.5px] font-black";
+    tomBadge.textContent = "OFFENSE";
+    riversBadge.className = "bg-slate-700 text-slate-300 px-1 rounded text-[7.5px] font-black";
+    riversBadge.textContent = "DEFENSE";
   } else {
-    p2Box.className = "bg-slate-800/90 p-2 rounded-lg border-2 border-sky-500 shadow-lg scale-[1.02] transition-all";
-    p1Box.className = "bg-slate-800/70 p-2 rounded-lg border border-slate-700/80 transition-all opacity-80";
-    p2Role.className = "bg-sky-500 text-slate-950 px-1 rounded text-[8px] font-black";
-    p2Role.textContent = "OFFENSE";
-    p1Role.className = "bg-slate-700 text-slate-300 px-1 rounded text-[8px] font-black";
-    p1Role.textContent = "DEFENSE";
-    turnBanner.textContent = `P2 (${currentMatchup.home.teamName}): Choose Offensive Play`;
+    riversBox.className = "bg-slate-800/90 p-1.5 rounded-lg border-2 border-sky-500 shadow-lg scale-[1.01] transition-all";
+    tomBox.className = "bg-slate-800/60 p-1.5 rounded-lg border border-slate-700/80 transition-all opacity-80";
+    riversBadge.className = "bg-sky-500 text-slate-950 px-1 rounded text-[7.5px] font-black";
+    riversBadge.textContent = "OFFENSE";
+    tomBadge.className = "bg-slate-700 text-slate-300 px-1 rounded text-[7.5px] font-black";
+    tomBadge.textContent = "DEFENSE";
   }
 
-  // Render on-court active 5
-  const offTeam = isP1Poss ? currentMatchup.away : currentMatchup.home;
+  const offTeam = isTom ? currentMatchup.tom : currentMatchup.rivers;
+  const currentShooter = offTeam.active[gameState.ballHandlerIndex] || offTeam.active[0];
+  document.getElementById('ballHolderTag').textContent = `🏀 Ball with: ${currentShooter.name} (${currentShooter.pos})`;
+
+  if (netRole !== 'solo') {
+    if (isMyTurn()) {
+      turnText.textContent = "Your Turn! Call play or pass:";
+      document.getElementById('consoleRoleTag').textContent = "YOUR POSSESSION";
+      document.getElementById('consoleRoleTag').className = "text-emerald-400 font-bold";
+    } else {
+      turnText.textContent = `${isTom ? 'Tom' : 'Rivers'} has the ball... Defending!`;
+      document.getElementById('consoleRoleTag').textContent = "DEFENDING";
+      document.getElementById('consoleRoleTag').className = "text-amber-400 font-bold";
+    }
+  } else {
+    turnText.textContent = `${isTom ? 'Tom' : 'Rivers'} Ball: Pass or Action`;
+  }
+
+  // Render on-court 5 (COMPACT BARS - 32px height)
   const container = document.getElementById('lineupContainer');
   container.innerHTML = "";
 
-  offTeam.active.forEach(p => {
-    const card = document.createElement('div');
-    card.className = "bg-slate-800 border border-slate-700 p-2 rounded-lg flex justify-between items-center text-xs shadow-sm";
-    card.innerHTML = `
-      <div>
-        <div class="flex items-center gap-1.5">
-          <span class="font-black text-white">${p.name}</span>
-          <span class="text-slate-400 font-mono text-[10px]">(${p.pos})</span>
-          <span class="text-[9px] px-1 py-0.2 bg-slate-900 text-slate-300 rounded font-mono font-bold">${p.def_rate}</span>
-        </div>
-        <div class="text-[10px] text-slate-400 mt-0.5 font-mono">
-          FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum + ' (' + p.tpVol + ')' : 'None'} | FT: 11-${p.ftNum}
+  offTeam.active.forEach((p, idx) => {
+    const hasBall = (idx === gameState.ballHandlerIndex);
+    const row = document.createElement('div');
+    row.className = `p-1.5 rounded-lg border flex justify-between items-center text-xs transition ${
+      hasBall ? 'bg-amber-950/50 border-amber-500 text-white shadow' : 'bg-slate-900 border-slate-800 text-slate-300'
+    }`;
+    row.innerHTML = `
+      <div class="flex items-center gap-1.5 truncate">
+        <span class="text-xs">${hasBall ? '🏀' : '👤'}</span>
+        <div class="truncate">
+          <div class="flex items-center gap-1">
+            <span class="font-black text-[11px] ${hasBall ? 'text-amber-300' : 'text-white'} truncate">${p.name}</span>
+            <span class="text-[9px] text-slate-400 font-mono">(${p.pos})</span>
+            <span class="text-[8px] px-1 bg-slate-800 text-slate-300 rounded font-mono">${p.def_rate}</span>
+          </div>
+          <div class="text-[9px] text-slate-400 font-mono leading-none">
+            FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum + ' (' + p.tpVol + ')' : 'None'} | AST: ${p.assist}
+          </div>
         </div>
       </div>
-      <div class="text-right font-mono">
-        <span class="text-amber-400 font-black">${p.pts} PTS</span>
-        <div class="text-[10px] text-slate-400">Shots: ${p.shotsRemaining} | F: <span class="${p.fouls >= 5 ? 'text-rose-400 font-bold' : ''}">${p.fouls}</span></div>
+      <div class="text-right font-mono text-[10px] flex-shrink-0">
+        <div class="font-black ${hasBall ? 'text-amber-300' : 'text-slate-200'}">${p.pts} PTS</div>
+        <div class="text-[8.5px] text-slate-400">Shots: ${p.shotsRemaining} | F: <span class="${p.fouls >= 5 ? 'text-rose-400 font-bold' : ''}">${p.fouls}</span></div>
       </div>
     `;
-    container.appendChild(card);
+    container.appendChild(row);
   });
 
-  // Action buttons active state
   const btnGrid = document.getElementById('actionBtnGrid');
   if (!isMyTurn()) {
     btnGrid.classList.add('opacity-40', 'pointer-events-none');
-    document.getElementById('actionConsoleTitle').textContent = "Waiting for Opponent to Play...";
   } else {
     btnGrid.classList.remove('opacity-40', 'pointer-events-none');
-    document.getElementById('actionConsoleTitle').textContent = "Your Turn — Choose Action:";
   }
 }
 
-function executeOffensePlay(playCall) {
+// ================= PASSING =================
+function openPassTargetModal() {
+  if (!isMyTurn()) return;
+  const isTom = gameState.possession === 'tom';
+  const offTeam = isTom ? currentMatchup.tom : currentMatchup.rivers;
+
+  const listDiv = document.getElementById('passTargetList');
+  listDiv.innerHTML = "";
+
+  offTeam.active.forEach((p, idx) => {
+    if (idx === gameState.ballHandlerIndex) return;
+    const btn = document.createElement('button');
+    btn.className = "w-full text-left p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs flex justify-between items-center";
+    btn.onclick = () => executePass(idx);
+    btn.innerHTML = `
+      <div>
+        <span class="font-bold text-white">${p.name}</span> <span class="text-slate-400">(${p.pos})</span>
+        <div class="text-[9.5px] text-slate-400">3PT: ${p.tpNum > 0 ? '11-' + p.tpNum + ' (' + p.tpVol + ')' : 'None'} | FG: 11-${p.fgNum}</div>
+      </div>
+      <span class="text-sky-400 font-black text-xs">Swing Ball ➔</span>
+    `;
+    listDiv.appendChild(btn);
+  });
+
+  document.getElementById('passModal').classList.remove('hidden');
+}
+
+function closePassTargetModal() {
+  document.getElementById('passModal').classList.add('hidden');
+}
+
+function executePass(targetIndex) {
+  closePassTargetModal();
+  const isTom = gameState.possession === 'tom';
+  const offTeam = isTom ? currentMatchup.tom : currentMatchup.rivers;
+  const passer = offTeam.active[gameState.ballHandlerIndex];
+  const receiver = offTeam.active[targetIndex];
+
+  gameState.lastPasserIndex = gameState.ballHandlerIndex;
+  gameState.ballHandlerIndex = targetIndex;
+
+  const msg = `🤝 <strong>${passer.name}</strong> swings pass to <strong>${receiver.name}</strong> on the perimeter!`;
+  logMessage(msg);
+  updateUI();
+  broadcastSync(msg);
+}
+
+// ================= ACTION EXECUTION =================
+function executeAction(playCall) {
   if (!isMyTurn()) return;
 
   if (gameState.secondsLeft <= 0) {
     if (gameState.quarter < 4) {
       gameState.quarter++;
       gameState.secondsLeft = 720;
-      gameState.homeFouls = 0;
-      gameState.awayFouls = 0;
+      gameState.tomFouls = 0;
+      gameState.riversFouls = 0;
       const qMsg = `<strong class="text-amber-400">--- END OF QUARTER. BEGINNING Q${gameState.quarter} ---</strong>`;
       logMessage(qMsg);
       broadcastSync(qMsg);
@@ -4754,65 +5043,75 @@ function executeOffensePlay(playCall) {
     }
   }
 
-  // Possession clock (14-24s)
-  const elapsed = Math.floor(Math.random() * 10) + 14;
+  const elapsed = Math.floor(Math.random() * 9) + 14;
   gameState.secondsLeft = Math.max(0, gameState.secondsLeft - elapsed);
 
-  const isP1 = gameState.possession === 'away';
-  const offTeam = isP1 ? currentMatchup.away : currentMatchup.home;
-  const defTeam = isP1 ? currentMatchup.home : currentMatchup.away;
+  const isTom = gameState.possession === 'tom';
+  const offTeam = isTom ? currentMatchup.tom : currentMatchup.rivers;
+  const defTeam = isTom ? currentMatchup.rivers : currentMatchup.tom;
 
-  let shooter;
+  let shooter = offTeam.active[gameState.ballHandlerIndex] || offTeam.active[0];
   let isThree = false;
 
-  if (playCall === 'corner_3') {
-    shooter = offTeam.active.filter(p => p.tpNum > 0).sort((a,b) => b.tpVol - a.tpVol)[0] || offTeam.active[0];
+  if (playCall === 'three') {
     isThree = true;
   } else if (playCall === 'drive') {
-    shooter = offTeam.active.filter(p => p.pos.includes('G') || p.pos.includes('F'))[0];
     isThree = false;
-  } else {
-    // Pick and pop 3
-    const big = offTeam.active.find(p => p.pos.includes('C') || p.pos.includes('F'));
-    if (big && big.tpNum > 0) {
+  } else if (playCall === 'pick_pop') {
+    const big = offTeam.active.find(p => (p.pos.includes('C') || p.pos.includes('F')) && p.tpNum > 0);
+    if (big) {
       shooter = big;
       isThree = true;
     } else {
-      shooter = offTeam.active[Math.floor(Math.random() * offTeam.active.length)];
       isThree = false;
     }
   }
 
   const defender = defTeam.active[Math.floor(Math.random() * defTeam.active.length)];
-  let threshold = isThree ? shooter.tpNum : shooter.fgNum;
+  let threshold = isThree ? (shooter.tpNum || 30) : shooter.fgNum;
   threshold += (defender.defMod * 2);
 
   const shotRoll = rollD88();
   if (shooter.shotsRemaining > 0) shooter.shotsRemaining--;
 
   let logResult = "";
+  let turnoverOrChange = false;
 
   if (shotRoll <= threshold) {
     const pts = isThree ? 3 : 2;
     shooter.pts += pts;
-    if (isP1) gameState.awayScore += pts;
-    else gameState.homeScore += pts;
+    if (isTom) gameState.tomScore += pts;
+    else gameState.riversScore += pts;
 
-    logResult = `🎯 <strong>${shooter.name}</strong> hits ${pts}PT (${playCall.toUpperCase()})! (Roll: ${shotRoll} vs ${threshold}) <span class="text-slate-500">[vs ${defender.name}]</span>`;
-    gameState.possession = isP1 ? 'home' : 'away';
+    let assistText = "";
+    if (gameState.lastPasserIndex !== null && gameState.lastPasserIndex !== gameState.ballHandlerIndex) {
+      const passer = offTeam.active[gameState.lastPasserIndex];
+      passer.assistsCount++;
+      assistText = ` (Ast: ${passer.name})`;
+    }
+
+    logResult = `🎯 <strong>${shooter.name}</strong> scores ${pts}PT! (Roll: ${shotRoll} vs ${threshold})${assistText} <span class="text-slate-500">[vs ${defender.name}]</span>`;
+    turnoverOrChange = true;
   } else {
-    // Rebound
     const rebRoll = rollD88();
     const offReb = offTeam.active.reduce((m, p) => p.rebound > m.rebound ? p : m, offTeam.active[0]);
     const defReb = defTeam.active.reduce((m, p) => p.rebound > m.rebound ? p : m, defTeam.active[0]);
 
     if (rebRoll <= 55) {
-      logResult = `❌ ${shooter.name} missed. Defensive rebound by <strong>${defReb.name}</strong>.`;
-      gameState.possession = isP1 ? 'home' : 'away';
+      logResult = `❌ ${shooter.name} missed ${isThree ? '3PT' : '2PT'}. Defensive board: <strong>${defReb.name}</strong>.`;
+      turnoverOrChange = true;
     } else {
-      logResult = `⚡ ${shooter.name} missed, but <strong>${offReb.name}</strong> grabs offensive board!`;
-      // Retains possession
+      logResult = `⚡ ${shooter.name} missed, but <strong>${offReb.name}</strong> snatches offensive board!`;
+      gameState.ballHandlerIndex = offTeam.active.indexOf(offReb);
+      gameState.lastPasserIndex = null;
+      turnoverOrChange = false;
     }
+  }
+
+  if (turnoverOrChange) {
+    gameState.possession = isTom ? 'rivers' : 'tom';
+    gameState.ballHandlerIndex = 0;
+    gameState.lastPasserIndex = null;
   }
 
   logMessage(logResult);
@@ -4820,15 +5119,19 @@ function executeOffensePlay(playCall) {
   broadcastSync(logResult);
 }
 
-// ================= SUBS =================
+// ================= MODAL CONTROLS =================
+function openSetupModal() { document.getElementById('setupModal').classList.remove('hidden'); }
+function closeSetupModal() { document.getElementById('setupModal').classList.add('hidden'); }
+
+function openLobbyModal() { document.getElementById('lobbyModal').classList.remove('hidden'); }
+function closeLobbyModal() { document.getElementById('lobbyModal').classList.add('hidden'); }
+
 function openSubModal(side) {
-  // Only allow subbing your own team in online mode
-  if (netRole === 'host' && side !== 'away') return;
-  if (netRole === 'client' && side !== 'home') return;
+  if (netRole !== 'solo' && side !== myIdentity) return;
 
   subState.teamSide = side;
   subState.selectedCourtIndex = 0;
-  const teamObj = side === 'home' ? currentMatchup.home : currentMatchup.away;
+  const teamObj = side === 'tom' ? currentMatchup.tom : currentMatchup.rivers;
   document.getElementById('subModalTitle').textContent = `${teamObj.coachName.toUpperCase()} (${teamObj.teamName}) SUBS`;
   renderSubLists();
   document.getElementById('subModal').classList.remove('hidden');
@@ -4841,76 +5144,46 @@ function closeSubModal() {
 }
 
 function renderSubLists() {
-  const teamObj = subState.teamSide === 'home' ? currentMatchup.home : currentMatchup.away;
+  const teamObj = subState.teamSide === 'tom' ? currentMatchup.tom : currentMatchup.rivers;
   const courtDiv = document.getElementById('subCourtList');
   const benchDiv = document.getElementById('subBenchList');
-
   courtDiv.innerHTML = "";
   benchDiv.innerHTML = "";
 
   teamObj.active.forEach((p, idx) => {
     const isSelected = (idx === subState.selectedCourtIndex);
     const btn = document.createElement('button');
-    btn.className = `w-full text-left p-2 rounded-lg text-xs flex justify-between items-center border transition ${
+    btn.className = `w-full text-left p-1.5 rounded-lg text-xs flex justify-between items-center border ${
       isSelected ? 'bg-amber-950/70 border-amber-500 text-amber-200' : 'bg-slate-800 border-slate-700 text-slate-300'
     }`;
     btn.onclick = () => { subState.selectedCourtIndex = idx; renderSubLists(); };
-    btn.innerHTML = `
-      <div>
-        <span class="font-bold">${p.name}</span> (${p.pos})
-        <div class="text-[10px] text-slate-400">FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum : 'None'}</div>
-      </div>
-      <div class="text-right">
-        <span class="text-amber-400 font-bold">${p.pts}P</span> | F: ${p.fouls}
-      </div>
-    `;
+    btn.innerHTML = `<div><span class="font-bold">${p.name}</span> (${p.pos})</div><span>${p.pts}P | F: ${p.fouls}</span>`;
     courtDiv.appendChild(btn);
   });
 
-  if (teamObj.bench.length === 0) {
-    benchDiv.innerHTML = `<div class="text-[11px] text-slate-500 italic p-2">No bench players available.</div>`;
-    return;
-  }
-
   teamObj.bench.forEach((p, bIdx) => {
     const btn = document.createElement('button');
-    btn.className = "w-full text-left p-2 rounded-lg text-xs flex justify-between items-center bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300";
-    btn.onclick = () => executeSub(bIdx);
-    btn.innerHTML = `
-      <div>
-        <span class="font-bold text-white">${p.name}</span> (${p.pos})
-        <div class="text-[10px] text-slate-400">FG: 11-${p.fgNum} | 3P: ${p.tpNum > 0 ? '11-' + p.tpNum : 'None'}</div>
-      </div>
-      <span class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-2 py-1 rounded text-[10px] uppercase">
-        Sub In ➔
-      </span>
-    `;
+    btn.className = "w-full text-left p-1.5 rounded-lg text-xs flex justify-between items-center bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300";
+    btn.onclick = () => {
+      const outP = teamObj.active[subState.selectedCourtIndex];
+      const inP = teamObj.bench[bIdx];
+      teamObj.active[subState.selectedCourtIndex] = inP;
+      teamObj.bench[bIdx] = outP;
+      const msg = `🔄 <strong>${teamObj.teamName}</strong> SUB: ${inP.name} in for ${outP.name}.`;
+      logMessage(msg);
+      renderSubLists();
+      updateUI();
+      broadcastSync(msg);
+    };
+    btn.innerHTML = `<div><span class="font-bold text-white">${p.name}</span> (${p.pos})</div><span class="text-sky-400 font-bold text-[10px]">Sub In ➔</span>`;
     benchDiv.appendChild(btn);
   });
 }
 
-function executeSub(benchIndex) {
-  const teamObj = subState.teamSide === 'home' ? currentMatchup.home : currentMatchup.away;
-  const outgoing = teamObj.active[subState.selectedCourtIndex];
-  const incoming = teamObj.bench[benchIndex];
-
-  teamObj.active[subState.selectedCourtIndex] = incoming;
-  teamObj.bench[benchIndex] = outgoing;
-
-  const msg = `🔄 <strong>${teamObj.teamName}</strong> SUB: ${incoming.name} in for ${outgoing.name}.`;
-  logMessage(msg);
-  renderSubLists();
-  updateUI();
-  broadcastSync(msg);
-}
-
-// Modal controls
-function openLobbyModal() { document.getElementById('lobbyModal').classList.remove('hidden'); }
-function closeLobbyModal() { document.getElementById('lobbyModal').classList.add('hidden'); }
-
-// Init default game
-initMatchup("Spazz Hands", "Hollywood Flakers");
-updateUI();
+// Initial bootstrap
+loadStickyIdentityUI();
+populateTeamDropdowns();
+initCustomMatchup("Spazz Hands", "Burger Kings", "tom");
 </script>
 </body>
 </html>
